@@ -3,7 +3,7 @@
 
   PYTHONPATH=. python scripts/run_fcps_benchmark.py
 
-Requires ``resources/fcps.npz`` (see ``scripts/export_fcps_npz.py``) or ``PYESOM_FCPS_NPZ``.
+Requires ``tests/fixtures/fcps.npz`` (see ``scripts/export_fcps_npz.py``) or ``PYESOM_FCPS_NPZ``.
 Requires optional ``scikit-learn`` for Adjusted Rand Index.
 
 Training defaults favour larger grids and iteration budgets suitable for exploratory runs.
@@ -51,7 +51,7 @@ def main() -> None:
         type=Path,
         default=None,
         metavar="PATH",
-        help="Path to fcps.npz (default: PYESOM_FCPS_NPZ or repo resources/fcps.npz)",
+        help="Path to fcps.npz (default: resolve tests/fixtures or PYESOM_FCPS_NPZ)",
     )
     args = parser.parse_args()
 

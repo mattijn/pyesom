@@ -1,33 +1,18 @@
-"""FCPS archive + full pipeline smoke tests (``resources/fcps.npz``, not shipped in the wheel).
-
-Paper-grade purity benchmarks depend strongly on ESOM size, iteration budget, and the
-projection implementation; reproduce extended experiments via ``scripts/run_fcps_benchmark.py``.
-"""
+"""FCPS fixture tensors + ESOM/U*F pipeline tests."""
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import numpy as np
 import pytest
 
+from fcps_npz_io import load_fcps
 from pyesom.clustering.ustar_flood import UStarFloodClustering
-from fcps_npz_io import load_fcps, resolve_fcps_npz_path
 from pyesom.projection.esom import ESOM
 from pyesom.topology.pmatrix import compute_pmatrix
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-
-try:
-    _FCPS_NPZ = resolve_fcps_npz_path(search_from=REPO_ROOT)
-except FileNotFoundError:
-    _FCPS_NPZ = None
-
-pytestmark = pytest.mark.skipif(
-    _FCPS_NPZ is None,
-    reason="Missing resources/fcps.npz — run scripts/export_fcps_npz.py or set PYESOM_FCPS_NPZ.",
-)
+_FCPS_NPZ = Path(__file__).resolve().parent / "fixtures" / "fcps.npz"
 
 
 def _zscore(x: np.ndarray) -> np.ndarray:
@@ -35,7 +20,6 @@ def _zscore(x: np.ndarray) -> np.ndarray:
 
 
 def test_fcps_shapes_and_labels():
-    assert _FCPS_NPZ is not None
     data, cls = load_fcps("atom", npz_path=_FCPS_NPZ)
     assert data.shape == (800, 3)
     assert cls.shape == (800,)
@@ -44,7 +28,6 @@ def test_fcps_shapes_and_labels():
 
 def test_fcps_esom_pipeline_smoke():
     """Fast smoke test — validates imports and wiring."""
-    assert _FCPS_NPZ is not None
     data, cls = load_fcps("atom", npz_path=_FCPS_NPZ)
     data = _zscore(data)
     som = ESOM(14, 16, data.shape[1], random_seed=0)
@@ -58,16 +41,10 @@ def test_fcps_esom_pipeline_smoke():
     assert np.isfinite(clf.ustar_).all()
 
 
-@pytest.mark.integration
-@pytest.mark.skipif(
-    os.environ.get("PYESOM_FULL_FCPS") != "1",
-    reason="Set PYESOM_FULL_FCPS=1 for extended benchmark (~minutes).",
-)
 def test_fcps_atom_adjusted_rand():
     pytest.importorskip("sklearn")
     from sklearn.metrics import adjusted_rand_score
 
-    assert _FCPS_NPZ is not None
     data, cls = load_fcps("atom", npz_path=_FCPS_NPZ)
     data = _zscore(data)
     gx, gy = 55, 65
@@ -83,10 +60,8 @@ def test_fcps_atom_adjusted_rand():
     assert ari >= 0.15
 
 
-@pytest.mark.slow
 def test_hepta_reasonable():
     """Seven-cluster toy — coarse grid sometimes merges parties; sanity bounds only."""
-    assert _FCPS_NPZ is not None
     data, cls = load_fcps("hepta", npz_path=_FCPS_NPZ)
     data = _zscore(data)
     gx, gy = 32, 36

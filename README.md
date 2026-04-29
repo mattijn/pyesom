@@ -1,6 +1,8 @@
 # pyesom
 
-Python implementation of the **Emergent Self-Organizing Map (ESOM)** workflow: large-grid SOM projection, **U\***-matrix (U + P density), and **U\*F** flood-fill clustering with an automatic threshold (Moutarde & Ultsch, WSOM 2005). The design mirrors the Thrun/Ultsch R ecosystem conceptually (`DatabionicSwarm`, `GeneralizedUmatrix`, `ProjectionBasedClustering`) while staying MIT-licensed and implemented from published descriptions—not translated from GPL R sources.
+**pyesom** implements large-grid **Emergent Self-Organizing Maps (ESOM)** together with **U\*** (combined U- and P-matrix topography) and **U\*F** flood-fill clustering with an automatic segmentation threshold. The methods follow the published formulations referenced below—especially Ultsch on the U-matrix and density scaling, Moutarde & Ultsch on U\*F clustering, and ESOM-style maps as described in the Ultsch & Mörchen technical report.
+
+**ESOM training** is **backend-pluggable**: you choose who trains the weight lattice (`ESOM(..., backend=...)`). Topology helpers (**U-matrix, BMUs, hit counts**) use the same definitions regardless of backend once weights share the rectangular `(rows, cols, features)` layout.
 
 ## Install
 
@@ -8,7 +10,25 @@ Python implementation of the **Emergent Self-Organizing Map (ESOM)** workflow: l
 pip install -e ".[dev]"
 ```
 
-Optional: `pip install -e ".[bench]"` for extended benchmark scripts using scikit-learn metrics.
+Optional extras:
+
+- **`[bench]`** — extended benchmark scripts using scikit-learn metrics (`pip install -e ".[bench]"`).
+- **`[sompy]`** — [SomPy](https://github.com/sevamoo/SOMPY) batch trainer as an ESOM backend (`pip install -e ".[sompy]"`). Pulls SomPy from GitHub (PyPI `sompy` is often broken).
+
+## ESOM backends
+
+| `backend` | Trainer | Notes |
+|-----------|-----------|--------|
+| **`minisom`** (default) | [MiniSom](https://github.com/JustGlowing/minisom) | Sequential updates; core dependency. |
+| **`sompy`** | SomPy | Batch updates; requires `pip install '.[sompy]'` in the same environment as your notebook or tests. |
+
+Example:
+
+```python
+som = ESOM(35, 42, data.shape[1], random_seed=0, backend="minisom")  # default
+# som = ESOM(35, 42, data.shape[1], random_seed=0, backend="sompy")   # optional
+som.fit(data, iterations=20_000)
+```
 
 ## Quick start
 
@@ -34,30 +54,38 @@ labels = clf.predict(som.bmu_indices(data))
 
 | Module | Role |
 |--------|------|
-| `pyesom.projection.esom` | Large-grid MiniSom wrapper (`PCA` weight init before training) |
+| `pyesom.projection.esom` | ESOM (`ESOM`): MiniSom or SomPy backend; PCA/random weight init for MiniSom |
 | `pyesom.topology` | `compute_umatrix`, `compute_pmatrix`, `compute_ustar` |
 | `pyesom.clustering` | `UStarFloodClustering` |
 | `pyesom.visualization` | Altair topographic maps & component planes |
 
 Out of scope for v0.1 (placeholders): Pswarm projection, DBS geodesic clustering (`projection/pswarm.py`, `clustering/dbs.py`).
 
-## FCPS benchmarks
+## Benchmarks
 
-FCPS-related helpers live **outside** the installable package: `scripts/fcps_npz_io.py` (load/export utilities only). Generate `resources/fcps.npz` via `scripts/export_fcps_npz.py` (reads `resources/FCPS-master/data` by default; requires `pip install '.[export-fcps]'`). Set `PYESOM_FCPS_NPZ` or place `resources/fcps.npz` for tests and benchmarks. Benchmark tests skip when the archive is absent.
+We benchmark against selected setups described by **Moutarde & Ultsch (2005)** ([HAL](https://hal.science/hal-00435726)). Tests load **`tests/fixtures/fcps.npz`** (tensor export from the FCPS R package, [GPL-3](https://cran.r-project.org/package=FCPS)); see `tests/fixtures/README.md`.
 
-- Heavy metric checks: `PYESOM_FULL_FCPS=1 pytest -m integration` (needs `scikit-learn`).
-- Manual exploration: `python scripts/run_fcps_benchmark.py`.
+## References
 
-Paper-level purity depends on ESOM training budget and grid size; treat benchmarks as regression tooling rather than strict reproduction of legacy Java/R experiments unless you tune hyperparameters deliberately.
+1. Ultsch, A. (2003). *U*-Matrix: a Tool to visualize Clusters in high dimensional Data. Technical Report Nr. 36, University of Marburg.  
+   <https://www.cs.ubbcluj.ro/~gabis/DocDiplome/SOM/ultsch03ustar.pdf>
 
-## Optional local assets
+2. Moutarde, F. & Ultsch, A. (2005). U\*F clustering: a new performant “cluster-mining” method based on segmentation of Self-Organizing Maps. WSOM 2005, Paris.  
+   HAL: <https://hal.science/hal-00435726>
 
-If you populate `resources/` (gitignored here) with FCPS exports and optional HKV assets, tests pick them up — for example `resources/fcps.npz` for FCPS benchmarks and `tests/test_hkv_csv.py` for the EU discharge SOM CSV.
+3. Ultsch, A. & Mörchen, F. (2005). ESOM-Maps: tools for clustering, visualization, and classification with Emergent SOM. Technical Report Nr. 46, University of Marburg.
+
+4. Ultsch, A. (2005). Clustering with SOM: U\*C. In *Proceedings of the 5th Workshop on Self-Organizing Maps (WSOM 2005)*, Paris, pp. 75–82.
+
+5. Thrun, M.C. & Ultsch, A. (2021). Swarm Intelligence for Self-Organized Clustering. *Artificial Intelligence*, Vol. 290, 103237. DOI: [10.1016/j.artint.2020.103237](https://doi.org/10.1016/j.artint.2020.103237)
+
+6. Thrun, M.C. (2018). *Projection-Based Clustering through Self-Organization and Swarm Intelligence.* Springer Vieweg. DOI: [10.1007/978-3-658-20540-9](https://doi.org/10.1007/978-3-658-20540-9) · open-access PDF: <https://link.springer.com/content/pdf/10.1007/978-3-658-20540-9.pdf>
+
+7. Vettigli, G. (2018). MiniSom: minimalistic and NumPy-based implementation of the Self Organizing Map.  
+   <https://github.com/JustGlowing/minisom>
 
 ## Development
 
 ```bash
 pytest
 ```
-
-See `CITATIONS.md` for references.

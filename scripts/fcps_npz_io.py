@@ -1,7 +1,8 @@
-"""Load FCPS-shaped benchmark arrays from a local ``.npz`` export (development / benchmarks only).
+"""Load FCPS-shaped benchmark tensors from ``tests/fixtures/fcps.npz`` (repo checkout).
 
-Not part of the ``pyesom`` installable package: keep FCPS-derived assets and GPL-related
-tooling out of the library wheel. See ``export_fcps_npz.py`` and ``resources/fcps.npz``.
+Not part of the ``pyesom`` wheel — keep benchmark data loading out of the library package.
+
+See ``tests/fixtures/README.md`` and ``scripts/export_fcps_npz.py``.
 """
 
 from __future__ import annotations
@@ -23,23 +24,23 @@ _DATASET_NAMES = (
 
 DatasetName = Literal["atom", "chainlink", "hepta", "lsun", "twodiamonds", "wingnut"]
 
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_REPO_ROOT = _SCRIPT_DIR.parent
+_FIXTURE_REL = Path("tests") / "fixtures" / "fcps.npz"
+FIXTURE_FCPS_NPZ = _REPO_ROOT / _FIXTURE_REL
+
 
 def resolve_fcps_npz_path(*, search_from: Path | None = None) -> Path:
     """
-    Locate ``fcps.npz`` for :func:`load_fcps`.
+    Locate ``fcps.npz``.
 
     Resolution order:
 
-    1. Environment variable ``PYESOM_FCPS_NPZ`` (path to the file).
-    2. Starting at ``search_from`` (default: current working directory),
-       walk upward; at each directory, if ``<dir>/resources/fcps.npz`` exists,
-       return it.
-
-    Raises
-    ------
-    FileNotFoundError
-        If no file is found. The message lists how to export the archive
-        (``scripts/export_fcps_npz.py``) and set ``PYESOM_FCPS_NPZ``.
+    1. Environment variable ``PYESOM_FCPS_NPZ``.
+    2. ``<repo>/tests/fixtures/fcps.npz`` where ``repo`` is the parent of ``scripts/``
+       (this file lives in ``scripts/``).
+    3. Walk upward from ``search_from`` (default: current working directory);
+       ``tests/fixtures/fcps.npz`` at each ancestor (running notebooks from subdirs).
     """
     env = os.environ.get("PYESOM_FCPS_NPZ")
     if env:
@@ -48,35 +49,26 @@ def resolve_fcps_npz_path(*, search_from: Path | None = None) -> Path:
             return p
         raise FileNotFoundError(f"PYESOM_FCPS_NPZ points to missing file: {p}")
 
+    candidate = _REPO_ROOT / _FIXTURE_REL
+    if candidate.is_file():
+        return candidate
+
     anchor = (search_from or Path.cwd()).resolve()
     for directory in [anchor, *anchor.parents]:
-        candidate = directory / "resources" / "fcps.npz"
-        if candidate.is_file():
-            return candidate
+        c = directory / _FIXTURE_REL
+        if c.is_file():
+            return c
 
     raise FileNotFoundError(
-        "Could not find FCPS data archive (resources/fcps.npz). "
-        "From repo root: pip install '.[export-fcps]' && python scripts/export_fcps_npz.py "
-        "or set PYESOM_FCPS_NPZ to the path of fcps.npz."
+        "Could not find fcps.npz (tests/fixtures/fcps.npz). "
+        "Regenerate with: pip install '.[export-fcps]' && python scripts/export_fcps_npz.py "
+        "or set PYESOM_FCPS_NPZ."
     )
 
 
 def load_fcps(name: DatasetName, *, npz_path: str | Path | None = None) -> tuple[np.ndarray, np.ndarray]:
     """
     Return ``(data, cls)`` with ``data`` shape ``(n, d)`` and integer labels ``0 .. k-1``.
-
-    Parameters
-    ----------
-    name
-        One of the FCPS dataset keys in the export.
-    npz_path
-        Path to ``fcps.npz``. If omitted, :func:`resolve_fcps_npz_path` is used.
-
-    Notes
-    -----
-    The ``lsun`` export uses the first two dimensions of FCPS ``Lsun3D``; class ``3`` is a
-    small outlier group (4 points). When benchmarking against ``true_k=3``, restrict
-    evaluation to samples with ``cls < 3``.
     """
     name_s = name.lower()
     if name_s not in _DATASET_NAMES:
@@ -85,3 +77,8 @@ def load_fcps(name: DatasetName, *, npz_path: str | Path | None = None) -> tuple
     path = Path(npz_path).expanduser().resolve() if npz_path is not None else resolve_fcps_npz_path()
     z = np.load(path)
     return z[f"{name_s}_data"].copy(), z[f"{name_s}_cls"].copy()
+
+
+def load_fcps_fixture(name: DatasetName) -> tuple[np.ndarray, np.ndarray]:
+    """Load tensors from the resolved committed fixture (same default NPZ as :func:`load_fcps`)."""
+    return load_fcps(name)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export FCPS .rda datasets to ``resources/fcps.npz`` (not packaged in pyesom).
+"""Export FCPS .rda datasets to ``tests/fixtures/fcps.npz`` (committed test fixture; not in wheel).
 
 Requires: pip install rdata
 Run from repo root with local FCPS ``.rda`` files (default reads ``resources/FCPS-master/data``).
@@ -23,7 +23,7 @@ def main() -> None:
     parser.add_argument(
         "--out",
         type=Path,
-        default=Path(__file__).resolve().parents[1] / "resources" / "fcps.npz",
+        default=Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "fcps.npz",
     )
     args = parser.parse_args()
 
