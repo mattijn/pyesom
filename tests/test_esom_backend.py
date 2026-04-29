@@ -22,4 +22,4 @@ def test_backend_aliases_normalized():
 
 def test_unknown_backend_raises():
     with pytest.raises(ValueError, match="unsupported backend"):
-        ESOM(4, 5, 3, backend="torchsom")
+        ESOM(4, 5, 3, backend="unknown")

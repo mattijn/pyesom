@@ -16,8 +16,6 @@ def plot_grid_heatmap(
     cell_pixels: float = 7.0,
     x_field: str = "col",
     y_field: str = "row",
-    x_title: str = "SOM column",
-    y_title: str = "SOM row",
 ) -> alt.Chart:
     """
     Rect heatmap of a 2-D numpy array.
@@ -38,8 +36,8 @@ def plot_grid_heatmap(
         Column names to use in the produced DataFrame.
         Defaults to ``"col"`` / ``"row"``; override to ``"X"`` / ``"Y"``
         when the grid uses geographic coordinate names.
-    x_title / y_title:
-        Axis label text shown in the chart.
+
+    X/Y ordinal axes are omitted (``axis=None``); row/col remain in tooltips.
     """
     alt.data_transformers.disable_max_rows()
 
@@ -57,8 +55,8 @@ def plot_grid_heatmap(
         alt.Chart(df)
         .mark_rect()
         .encode(
-            x=alt.X(f"{x_field}:O", sort=None, title=x_title),
-            y=alt.Y(f"{y_field}:O", sort="descending", title=y_title),
+            x=alt.X(f"{x_field}:O", sort=None, axis=None),
+            y=alt.Y(f"{y_field}:O", sort="descending", axis=None),
             color=alt.Color(
                 f"{value_name}:Q",
                 scale=alt.Scale(scheme=scheme),

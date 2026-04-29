@@ -18,9 +18,7 @@ def plot_component_planes(
     *,
     cell_pixels: float = 8.0,
 ) -> alt.Chart:
-    """
-    Faceted rect charts — one plane per input feature — shared quantitative scale.
-    """
+    """Faceted rect charts — one plane per input feature — shared quantitative scale."""
     alt.data_transformers.disable_max_rows()
 
     data = np.asarray(data, dtype=np.float64)
@@ -55,8 +53,8 @@ def plot_component_planes(
         alt.Chart(df)
         .mark_rect()
         .encode(
-            x=alt.X("col:O", sort=None, title=None),
-            y=alt.Y("row:O", sort="descending", title=None),
+            x=alt.X("col:O", sort=None, axis=None),
+            y=alt.Y("row:O", sort="descending", axis=None),
             column=alt.Column("feature:N", title=""),
             color=alt.Color("value:Q", scale=alt.Scale(scheme="viridis"), legend=None),
             tooltip=["feature", "row", "col", "value"],

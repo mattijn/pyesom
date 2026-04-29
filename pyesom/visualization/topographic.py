@@ -19,7 +19,7 @@ def plot_topographic_map(
     Rect heatmap of ``ustar`` with optional BMU scatter (and label color).
 
     Uses a hypsometric-style palette: low elevations (cluster cores) read as valley
-    tones, highs as ridges.
+    tones, highs as ridges. Ordinal x/y axes are omitted on grid and overlay.
     """
     alt.data_transformers.disable_max_rows()
 
@@ -32,8 +32,8 @@ def plot_topographic_map(
     grid = pd.DataFrame(rows)
 
     chart = alt.Chart(grid).mark_rect().encode(
-        x=alt.X("col:O", sort=None, title=None),
-        y=alt.Y("row:O", sort="descending", title=None),
+        x=alt.X("col:O", sort=None, axis=None),
+        y=alt.Y("row:O", sort="descending", axis=None),
         color=alt.Color(
             "ustar:Q",
             scale=(
@@ -50,22 +50,24 @@ def plot_topographic_map(
 
     bm = np.asarray(bestmatches, dtype=np.float64)
     bdf = pd.DataFrame({"col": bm[:, 1], "row": bm[:, 0]})
+    _x_pts = alt.X("col:O", sort=None, axis=None)
+    _y_pts = alt.Y("row:O", sort="descending", axis=None)
     if labels is not None:
         bdf["cluster"] = np.asarray(labels)
         pts = (
             alt.Chart(bdf)
             .mark_circle(opacity=0.35, stroke="white", strokeWidth=0.3, size=24)
             .encode(
-                x=alt.X("col:O", sort=None),
-                y=alt.Y("row:O", sort="descending"),
+                x=_x_pts,
+                y=_y_pts,
                 color=alt.Color("cluster:N", legend=None),
                 tooltip=["row", "col", "cluster"],
             )
         )
     else:
         pts = alt.Chart(bdf).mark_circle(color="black", opacity=0.25, size=20).encode(
-            x=alt.X("col:O", sort=None),
-            y=alt.Y("row:O", sort="descending"),
+            x=_x_pts,
+            y=_y_pts,
         )
 
     layered = alt.layer(chart, pts).properties(

@@ -14,6 +14,7 @@ Optional extras:
 
 - **`[bench]`** — extended benchmark scripts using scikit-learn metrics (`pip install -e ".[bench]"`).
 - **`[sompy]`** — [SomPy](https://github.com/sevamoo/SOMPY) batch trainer as an ESOM backend (`pip install -e ".[sompy]"`). Pulls SomPy from GitHub (PyPI `sompy` is often broken).
+- **`[torchsom]`** — [torchsom](https://pypi.org/project/torchsom/) (PyTorch, GPU-capable batch trainer). Same interpreter/kernel as your notebook: `pip install -e ".[torchsom]"`.
 
 ## ESOM backends
 
@@ -21,12 +22,14 @@ Optional extras:
 |-----------|-----------|--------|
 | **`minisom`** (default) | [MiniSom](https://github.com/JustGlowing/minisom) | Sequential updates; core dependency. |
 | **`sompy`** | SomPy | Batch updates; requires `pip install '.[sompy]'` in the same environment as your notebook or tests. |
+| **`torchsom`** | [torchsom](https://pypi.org/project/torchsom/) | PyTorch batch trainer; requires `pip install '.[torchsom]'`. |
 
 Example:
 
 ```python
 som = ESOM(35, 42, data.shape[1], random_seed=0, backend="minisom")  # default
-# som = ESOM(35, 42, data.shape[1], random_seed=0, backend="sompy")   # optional
+# som = ESOM(35, 42, data.shape[1], random_seed=0, backend="sompy")   # pip install '.[sompy]'
+# som = ESOM(35, 42, data.shape[1], random_seed=0, backend="torchsom") # pip install '.[torchsom]'
 som.fit(data, iterations=20_000)
 ```
 

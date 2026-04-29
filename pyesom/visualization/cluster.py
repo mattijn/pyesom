@@ -13,8 +13,6 @@ def plot_cluster_map(
     *,
     x_col: str = "col",
     y_col: str = "row",
-    x_title: str = "SOM column",
-    y_title: str = "SOM row",
     cell_pixels: float = 7.0,
     unassigned_color: str = "#d8d8d8",
     scheme: str = "category20",
@@ -35,8 +33,6 @@ def plot_cluster_map(
     x_col / y_col:
         Column names to use in the produced DataFrame.  Override to ``"X"``
         and ``"Y"`` when the grid uses geographic coordinate names.
-    x_title / y_title:
-        Axis labels shown in the chart.
     cell_pixels:
         Width/height of each cell in pixels.
     unassigned_color:
@@ -44,6 +40,8 @@ def plot_cluster_map(
     scheme:
         Vega-Lite color scheme for the cluster nominal encoding.
         ``"category20"`` gives 20 visually distinct colours.
+
+    X/Y ordinal axes are omitted (``axis=None``).
     """
     alt.data_transformers.disable_max_rows()
 
@@ -58,8 +56,8 @@ def plot_cluster_map(
     df = pd.DataFrame(rows)
 
     xy_enc = dict(
-        x=alt.X(f"{x_col}:O", sort=None, title=x_title),
-        y=alt.Y(f"{y_col}:O", sort="descending", title=y_title),
+        x=alt.X(f"{x_col}:O", sort=None, axis=None),
+        y=alt.Y(f"{y_col}:O", sort="descending", axis=None),
     )
     props = dict(width={"step": cell_pixels}, height={"step": cell_pixels})
 

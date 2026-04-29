@@ -57,8 +57,13 @@ class UStarFloodClustering:
     """
     U*F clustering (Moutarde & Ultsch, WSOM 2005).
 
-    Threshold is picked where ``region_size(threshold)`` has maximal gradient;
-    clusters grow from local minima of the normalized landscape below ``threshold_``.
+    Automatic threshold: scan normalized U*, build ``region_size(t)`` from the global
+    minimum (Moutarde & Ultsch §2.4), take discrete gradients. The bin with the largest
+    gradient is where overflow begins; by default we anchor at the **lower** edge of
+    that bin (just **before** the sharpest rise — stricter, matches the paper's intent).
+    This can yield empty segmentation on noisy inputs where no cells satisfy
+    ``norm < threshold``; use ``threshold_anchor="upper"`` (just **after** the rise) for
+    more permissive valley filling, or override with ``threshold=`` on :meth:`fit`.
     """
 
     def __init__(
@@ -69,6 +74,7 @@ class UStarFloodClustering:
         use_ustar: bool = True,
         scalemax: float = 3.0,
         p_median_size: int = 3,
+        threshold_anchor: str = "lower",
     ) -> None:
         self.min_cluster_size = int(min_cluster_size)
         self.min_samples = int(min_samples)
@@ -76,6 +82,10 @@ class UStarFloodClustering:
         self.use_ustar = bool(use_ustar)
         self.scalemax = float(scalemax)
         self.p_median_size = int(p_median_size)
+        ta = str(threshold_anchor).lower()
+        if ta not in ("upper", "lower"):
+            raise ValueError('threshold_anchor must be "upper" or "lower"')
+        self.threshold_anchor = ta
 
         self.labels_: np.ndarray | None = None
         self.n_clusters_: int = 0
@@ -83,7 +93,13 @@ class UStarFloodClustering:
         self.threshold_: float | None = None
         self._unorm_: np.ndarray | None = None
 
-    def fit(self, u_matrix: np.ndarray, p_matrix: np.ndarray) -> UStarFloodClustering:
+    def fit(
+        self,
+        u_matrix: np.ndarray,
+        p_matrix: np.ndarray,
+        *,
+        threshold: float | None = None,
+    ) -> UStarFloodClustering:
         u_matrix = np.asarray(u_matrix, dtype=np.float64)
         p_matrix = np.asarray(p_matrix, dtype=np.float64)
 
@@ -101,15 +117,22 @@ class UStarFloodClustering:
         unorm = _normalize_unit_interval(raw)
         self._unorm_ = unorm
 
-        thresholds = np.linspace(0.0, 1.0, self.n_threshold_steps)
-        sizes = [_flood_region_size(unorm, float(t)) for t in thresholds]
-        grad = np.diff(np.asarray(sizes, dtype=np.float64))
-        if grad.size == 0 or np.nanmax(grad) <= 0:
-            t_star = 0.5
+        if threshold is not None:
+            t_star = float(threshold)
+            if not (0.0 <= t_star <= 1.0):
+                raise ValueError("threshold must be between 0 and 1 (normalized U*)")
         else:
-            t_star_idx = int(np.argmax(grad))
-            # largest step between adjacent threshold slots
-            t_star = float(thresholds[min(t_star_idx + 1, len(thresholds) - 1)])
+            thresholds = np.linspace(0.0, 1.0, self.n_threshold_steps)
+            sizes = [_flood_region_size(unorm, float(t)) for t in thresholds]
+            grad = np.diff(np.asarray(sizes, dtype=np.float64))
+            if grad.size == 0 or np.nanmax(grad) <= 0:
+                t_star = 0.5
+            else:
+                t_star_idx = int(np.argmax(grad))
+                if self.threshold_anchor == "lower":
+                    t_star = float(thresholds[t_star_idx])
+                else:
+                    t_star = float(thresholds[min(t_star_idx + 1, len(thresholds) - 1)])
 
         self.threshold_ = t_star
         labels, n_clu = self._label_nodes(unorm, t_star, p_matrix)

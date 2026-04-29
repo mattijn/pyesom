@@ -29,6 +29,13 @@ sompy = [
     "sompy @ git+https://github.com/sevamoo/SOMPY.git",
     "scikit-learn>=1.3",
 ]
+# PyTorch batch trainer ([torchsom](https://pypi.org/project/torchsom/) — Michelin TorchSOM API).
+torchsom = [
+    "torch>=2.0",
+    "torchsom>=1.0.0",
+]
+# IntraSOM batch trainer — toroidal + hexagonal grid support.
+intrasom = ["intrasom>=1.0"]
 
 [tool.setuptools.packages.find]
 where = ["."]

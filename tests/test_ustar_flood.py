@@ -17,7 +17,7 @@ def _two_valley_grid(size=10):
 
 def test_two_valleys_two_clusters():
     u, p = _two_valley_grid()
-    clf = UStarFloodClustering(min_cluster_size=1, n_threshold_steps=50)
+    clf = UStarFloodClustering(min_cluster_size=1, n_threshold_steps=50, threshold_anchor="upper")
     clf.fit(u, p)
     assert clf.n_clusters_ >= 2
 
@@ -45,6 +45,63 @@ def test_threshold_in_unit_interval():
     clf = UStarFloodClustering(n_threshold_steps=50)
     clf.fit(u, p)
     assert 0.0 <= clf.threshold_ <= 1.0
+
+
+def test_auto_threshold_upper_bin_matches_manual_formula():
+    rng = np.random.default_rng(42)
+    u = rng.random((18, 18)).astype(np.float64)
+    p = np.ones_like(u)
+    nsteps = 50
+    clf = UStarFloodClustering(
+        min_cluster_size=1, n_threshold_steps=nsteps, use_ustar=False, threshold_anchor="upper"
+    )
+    clf.fit(u, p)
+    from pyesom.clustering.ustar_flood import _normalize_unit_interval, _flood_region_size
+
+    unorm = _normalize_unit_interval(clf.ustar_)
+    thresholds = np.linspace(0.0, 1.0, nsteps)
+    sizes = [_flood_region_size(unorm, float(t)) for t in thresholds]
+    grad = np.diff(np.asarray(sizes, dtype=np.float64))
+    k = int(np.argmax(grad))
+    expected = float(thresholds[min(k + 1, nsteps - 1)])
+    assert clf.threshold_ == expected
+
+
+def test_auto_threshold_lower_bin_matches_manual_formula():
+    rng = np.random.default_rng(42)
+    u = rng.random((18, 18)).astype(np.float64)
+    p = np.ones_like(u)
+    nsteps = 50
+    clf = UStarFloodClustering(
+        min_cluster_size=1, n_threshold_steps=nsteps, use_ustar=False, threshold_anchor="lower"
+    )
+    clf.fit(u, p)
+    from pyesom.clustering.ustar_flood import _normalize_unit_interval, _flood_region_size
+
+    unorm = _normalize_unit_interval(clf.ustar_)
+    thresholds = np.linspace(0.0, 1.0, nsteps)
+    sizes = [_flood_region_size(unorm, float(t)) for t in thresholds]
+    grad = np.diff(np.asarray(sizes, dtype=np.float64))
+    k = int(np.argmax(grad))
+    assert clf.threshold_ == float(thresholds[k])
+
+
+def test_threshold_anchor_invalid_raises():
+    with pytest.raises(ValueError, match="threshold_anchor"):
+        UStarFloodClustering(threshold_anchor="middle")
+def test_manual_threshold_override():
+    """fit(..., threshold=t) pins threshold_ and skips auto gradient rule."""
+    u, p = _two_valley_grid()
+    clf = UStarFloodClustering(min_cluster_size=1, n_threshold_steps=50)
+    clf.fit(u, p, threshold=0.48)
+    assert clf.threshold_ == 0.48
+
+
+def test_manual_threshold_out_of_range_raises():
+    u, p = _two_valley_grid()
+    clf = UStarFloodClustering(min_cluster_size=1)
+    with pytest.raises(ValueError, match="threshold"):
+        clf.fit(u, p, threshold=1.01)
 
 
 def test_labels_contain_only_valid_ids():
@@ -78,7 +135,7 @@ def test_use_ustar_false_stores_raw_u():
 
 def test_use_ustar_false_still_clusters():
     u, p = _two_valley_grid()
-    clf = UStarFloodClustering(min_cluster_size=1, n_threshold_steps=50, use_ustar=False)
+    clf = UStarFloodClustering(min_cluster_size=1, n_threshold_steps=50, use_ustar=False, threshold_anchor="upper")
     clf.fit(u, p)
     assert clf.n_clusters_ >= 1
 
@@ -123,7 +180,7 @@ def test_predict_shape():
 def test_predict_assigned_nodes_are_valid():
     """Samples whose BMU is a labelled node should get a non-negative label."""
     u, p = _two_valley_grid()
-    clf = UStarFloodClustering(min_cluster_size=1, n_threshold_steps=50)
+    clf = UStarFloodClustering(min_cluster_size=1, n_threshold_steps=50, threshold_anchor="upper")
     clf.fit(u, p)
     # Feed BMU coordinates from each known cluster centre
     centres = np.array([[2, 2], [7, 7]], dtype=np.int64)
@@ -184,7 +241,7 @@ def test_single_basin_one_cluster():
     u = np.ones((8, 8)) * 0.8
     u[3:6, 3:6] = 0.05   # one clear basin
     p = np.ones_like(u) * 0.5
-    clf = UStarFloodClustering(min_cluster_size=1, n_threshold_steps=60)
+    clf = UStarFloodClustering(min_cluster_size=1, n_threshold_steps=60, threshold_anchor="upper")
     clf.fit(u, p)
     assert clf.n_clusters_ >= 1
 
@@ -212,7 +269,7 @@ def test_min_samples_preserves_data_rich_small_cluster():
     p[8, 8] = 100.0
     p[8, 9] = 100.0
 
-    common = dict(n_threshold_steps=50, p_median_size=1)
+    common = dict(n_threshold_steps=50, p_median_size=1, threshold_anchor="upper")
 
     clf_strict = UStarFloodClustering(min_cluster_size=10, min_samples=0, **common)
     clf_strict.fit(u, p)
