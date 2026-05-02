@@ -1,0 +1,169 @@
+backend	dataset	grid_rows	grid_cols	iterations	epochs	sigma	learning_rate	neighborhood_function	batch_size	train_len_factor	initialization	mapshape	pareto_fraction	n_threshold_steps	threshold_anchor	n_clusters	n_assigned	n_wrong	purity	coverage	paper_score	elapsed_s
+minisom	atom	50	82	50000			0.3	gaussian					0.15	100	upper	1	710	320	0.5493	0.8875	0.6360	8.1
+minisom	atom	50	82	50000			0.3	gaussian					0.15	100	upper	1	710	320	0.5493	0.8875	0.6360	7.7
+minisom	atom	50	82	50000			0.3	gaussian					0.15	200	upper	1	707	318	0.5502	0.8838	0.6352	7.7
+minisom	atom	50	82	50000			0.3	gaussian					0.2013	100	upper	1	710	320	0.5493	0.8875	0.6360	7.5
+minisom	atom	50	82	50000			0.3	gaussian					0.2013	200	upper	1	707	318	0.5502	0.8838	0.6352	7.7
+minisom	atom	50	82	50000			0.3	gaussian					0.25	100	upper	1	710	320	0.5493	0.8875	0.6360	7.7
+minisom	atom	50	82	50000			0.3	gaussian					0.25	200	upper	1	707	318	0.5502	0.8838	0.6352	8.1
+minisom	atom	50	82	50000			0.5	gaussian					0.15	100	upper	1	736	346	0.5299	0.9200	0.6380	7.8
+minisom	atom	50	82	50000			0.5	gaussian					0.15	200	upper	1	736	346	0.5299	0.9200	0.6380	8.3
+minisom	atom	50	82	50000			0.5	gaussian					0.2013	100	upper	1	736	346	0.5299	0.9200	0.6380	7.8
+minisom	atom	50	82	50000			0.5	gaussian					0.2013	200	upper	1	736	346	0.5299	0.9200	0.6380	8.0
+minisom	atom	50	82	50000			0.5	gaussian					0.25	100	upper	1	736	346	0.5299	0.9200	0.6380	7.9
+minisom	atom	50	82	50000			0.5	gaussian					0.25	200	upper	1	736	346	0.5299	0.9200	0.6380	8.3
+minisom	atom	50	82	50000			0.7	gaussian					0.15	100	upper	3	711	276	0.6118	0.8888	0.6614	8.3
+minisom	atom	50	82	50000			0.7	gaussian					0.15	200	upper	3	703	275	0.6088	0.8788	0.6572	8.2
+minisom	atom	50	82	50000			0.7	gaussian					0.2013	100	upper	3	711	276	0.6118	0.8888	0.6614	7.9
+minisom	atom	50	82	50000			0.7	gaussian					0.2013	200	upper	3	703	275	0.6088	0.8788	0.6572	8.3
+minisom	atom	50	82	50000			0.7	gaussian					0.25	100	upper	3	711	276	0.6118	0.8888	0.6614	7.9
+minisom	atom	50	82	50000			0.7	gaussian					0.25	200	upper	3	703	275	0.6088	0.8788	0.6572	7.9
+minisom	atom	50	82	50000		15	0.3	gaussian					0.15	100	upper	1	717	317	0.5579	0.8962	0.6420	8.0
+minisom	atom	50	82	50000		15	0.3	gaussian					0.15	200	upper	1	716	316	0.5587	0.8950	0.6420	8.2
+minisom	atom	50	82	50000		15	0.3	gaussian					0.2013	100	upper	1	717	317	0.5579	0.8962	0.6420	8.3
+minisom	atom	50	82	50000		15	0.3	gaussian					0.2013	200	upper	1	716	316	0.5587	0.8950	0.6420	8.0
+minisom	atom	50	82	50000		15	0.3	gaussian					0.25	100	upper	1	717	317	0.5579	0.8962	0.6420	7.8
+minisom	atom	50	82	50000		15	0.3	gaussian					0.25	200	upper	1	716	316	0.5587	0.8950	0.6420	8.0
+minisom	atom	50	82	50000		15	0.5	gaussian					0.15	100	upper	1	662	263	0.6027	0.8275	0.6393	7.9
+minisom	atom	50	82	50000		15	0.5	gaussian					0.15	200	upper	1	662	263	0.6027	0.8275	0.6393	8.1
+minisom	atom	50	82	50000		15	0.5	gaussian					0.2013	100	upper	1	662	263	0.6027	0.8275	0.6393	7.9
+minisom	atom	50	82	50000		15	0.5	gaussian					0.2013	200	upper	1	662	263	0.6027	0.8275	0.6393	8.0
+minisom	atom	50	82	50000		15	0.5	gaussian					0.25	100	upper	1	662	263	0.6027	0.8275	0.6393	7.7
+minisom	atom	50	82	50000		15	0.5	gaussian					0.25	200	upper	1	662	263	0.6027	0.8275	0.6393	8.0
+minisom	atom	50	82	50000		15	0.7	gaussian					0.15	100	upper	2	686	285	0.5845	0.8575	0.7911	7.7
+minisom	atom	50	82	50000		15	0.7	gaussian					0.15	200	upper	2	683	282	0.5871	0.8538	0.7910	8.1
+minisom	atom	50	82	50000		15	0.7	gaussian					0.2013	100	upper	2	686	285	0.5845	0.8575	0.7911	7.7
+minisom	atom	50	82	50000		15	0.7	gaussian					0.2013	200	upper	2	683	282	0.5871	0.8538	0.7910	7.9
+minisom	atom	50	82	50000		15	0.7	gaussian					0.25	100	upper	2	686	285	0.5845	0.8575	0.7911	7.8
+minisom	atom	50	82	50000		15	0.7	gaussian					0.25	200	upper	2	683	282	0.5871	0.8538	0.7910	7.9
+minisom	atom	50	82	50000		25	0.3	gaussian					0.15	100	upper	1	129	0	1.0000	0.1613	0.5984	7.7
+minisom	atom	50	82	50000		25	0.3	gaussian					0.15	200	upper	1	112	0	1.0000	0.1400	0.5920	7.9
+minisom	atom	50	82	50000		25	0.3	gaussian					0.2013	100	upper	1	129	0	1.0000	0.1613	0.5984	7.7
+minisom	atom	50	82	50000		25	0.3	gaussian					0.2013	200	upper	1	112	0	1.0000	0.1400	0.5920	8.0
+minisom	atom	50	82	50000		25	0.3	gaussian					0.25	100	upper	1	129	0	1.0000	0.1613	0.5984	7.7
+minisom	atom	50	82	50000		25	0.3	gaussian					0.25	200	upper	1	112	0	1.0000	0.1400	0.5920	7.9
+minisom	atom	50	82	50000		25	0.5	gaussian					0.15	100	upper	1	105	0	1.0000	0.1313	0.5894	7.7
+minisom	atom	50	82	50000		25	0.5	gaussian					0.15	200	upper	1	105	0	1.0000	0.1313	0.5894	7.9
+minisom	atom	50	82	50000		25	0.5	gaussian					0.2013	100	upper	1	105	0	1.0000	0.1313	0.5894	7.7
+minisom	atom	50	82	50000		25	0.5	gaussian					0.2013	200	upper	1	105	0	1.0000	0.1313	0.5894	7.9
+minisom	atom	50	82	50000		25	0.5	gaussian					0.25	100	upper	1	105	0	1.0000	0.1313	0.5894	7.7
+minisom	atom	50	82	50000		25	0.5	gaussian					0.25	200	upper	1	105	0	1.0000	0.1313	0.5894	7.9
+minisom	atom	50	82	50000		25	0.7	gaussian					0.15	100	upper	1	727	328	0.5488	0.9087	0.6422	7.7
+minisom	atom	50	82	50000		25	0.7	gaussian					0.15	200	upper	1	726	327	0.5496	0.9075	0.6421	7.9
+minisom	atom	50	82	50000		25	0.7	gaussian					0.2013	100	upper	1	727	328	0.5488	0.9087	0.6422	7.7
+minisom	atom	50	82	50000		25	0.7	gaussian					0.2013	200	upper	1	726	327	0.5496	0.9075	0.6421	7.8
+minisom	atom	50	82	50000		25	0.7	gaussian					0.25	100	upper	1	727	328	0.5488	0.9087	0.6422	7.7
+minisom	atom	50	82	50000		25	0.7	gaussian					0.25	200	upper	1	726	327	0.5496	0.9075	0.6421	7.9
+minisom	atom	50	82	150000			0.3	gaussian					0.15	100	upper	1	760	362	0.5237	0.9500	0.6445	22.5
+minisom	atom	50	82	150000			0.3	gaussian					0.15	200	upper	1	757	359	0.5258	0.9463	0.6442	22.6
+minisom	atom	50	82	150000			0.3	gaussian					0.2013	100	upper	1	760	362	0.5237	0.9500	0.6445	22.5
+minisom	atom	50	82	150000			0.3	gaussian					0.2013	200	upper	1	757	359	0.5258	0.9463	0.6442	22.7
+minisom	atom	50	82	150000			0.3	gaussian					0.25	100	upper	1	760	362	0.5237	0.9500	0.6445	22.5
+minisom	atom	50	82	150000			0.3	gaussian					0.25	200	upper	1	757	359	0.5258	0.9463	0.6442	22.7
+minisom	atom	50	82	150000			0.5	gaussian					0.15	100	upper	1	769	370	0.5189	0.9613	0.6459	22.6
+minisom	atom	50	82	150000			0.5	gaussian					0.15	200	upper	1	769	370	0.5189	0.9613	0.6459	22.5
+minisom	atom	50	82	150000			0.5	gaussian					0.2013	100	upper	1	769	370	0.5189	0.9613	0.6459	22.4
+minisom	atom	50	82	150000			0.5	gaussian					0.2013	200	upper	1	769	370	0.5189	0.9613	0.6459	22.6
+minisom	atom	50	82	150000			0.5	gaussian					0.25	100	upper	1	769	370	0.5189	0.9613	0.6459	22.4
+minisom	atom	50	82	150000			0.5	gaussian					0.25	200	upper	1	769	370	0.5189	0.9613	0.6459	23.3
+minisom	atom	50	82	150000			0.7	gaussian					0.15	100	upper	1	753	354	0.5299	0.9413	0.6443	23.5
+minisom	atom	50	82	150000			0.7	gaussian					0.15	200	upper	1	753	354	0.5299	0.9413	0.6443	23.6
+minisom	atom	50	82	150000			0.7	gaussian					0.2013	100	upper	1	753	354	0.5299	0.9413	0.6443	23.7
+minisom	atom	50	82	150000			0.7	gaussian					0.2013	200	upper	1	753	354	0.5299	0.9413	0.6443	23.7
+minisom	atom	50	82	150000			0.7	gaussian					0.25	100	upper	1	753	354	0.5299	0.9413	0.6443	23.6
+minisom	atom	50	82	150000			0.7	gaussian					0.25	200	upper	1	753	354	0.5299	0.9413	0.6443	23.8
+minisom	atom	50	82	150000		15	0.3	gaussian					0.15	100	upper	1	693	294	0.5758	0.8662	0.6402	23.6
+minisom	atom	50	82	150000		15	0.3	gaussian					0.15	200	upper	1	695	296	0.5741	0.8688	0.6403	23.7
+minisom	atom	50	82	150000		15	0.3	gaussian					0.2013	100	upper	1	693	294	0.5758	0.8662	0.6402	23.5
+minisom	atom	50	82	150000		15	0.3	gaussian					0.2013	200	upper	1	695	296	0.5741	0.8688	0.6403	23.9
+minisom	atom	50	82	150000		15	0.3	gaussian					0.25	100	upper	1	693	294	0.5758	0.8662	0.6402	23.8
+minisom	atom	50	82	150000		15	0.3	gaussian					0.25	200	upper	1	695	296	0.5741	0.8688	0.6403	23.8
+minisom	atom	50	82	150000		15	0.5	gaussian					0.15	100	upper	2	658	255	0.6125	0.8225	0.7917	23.5
+minisom	atom	50	82	150000		15	0.5	gaussian					0.15	200	upper	2	657	254	0.6134	0.8213	0.7917	23.9
+minisom	atom	50	82	150000		15	0.5	gaussian					0.2013	100	upper	2	658	255	0.6125	0.8225	0.7917	23.8
+minisom	atom	50	82	150000		15	0.5	gaussian					0.2013	200	upper	2	657	254	0.6134	0.8213	0.7917	24.0
+minisom	atom	50	82	150000		15	0.5	gaussian					0.25	100	upper	2	658	255	0.6125	0.8225	0.7917	23.5
+minisom	atom	50	82	150000		15	0.5	gaussian					0.25	200	upper	2	657	254	0.6134	0.8213	0.7917	23.8
+minisom	atom	50	82	150000		15	0.7	gaussian					0.15	100	upper	2	633	229	0.6382	0.7913	0.7927	23.6
+minisom	atom	50	82	150000		15	0.7	gaussian					0.15	200	upper	2	632	228	0.6392	0.7900	0.7927	23.7
+minisom	atom	50	82	150000		15	0.7	gaussian					0.2013	100	upper	2	633	229	0.6382	0.7913	0.7927	23.7
+minisom	atom	50	82	150000		15	0.7	gaussian					0.2013	200	upper	2	632	228	0.6392	0.7900	0.7927	24.0
+minisom	atom	50	82	150000		15	0.7	gaussian					0.25	100	upper	2	633	229	0.6382	0.7913	0.7927	23.4
+minisom	atom	50	82	150000		15	0.7	gaussian					0.25	200	upper	2	632	228	0.6392	0.7900	0.7927	23.8
+minisom	atom	50	82	150000		25	0.3	gaussian					0.15	100	upper	1	719	319	0.5563	0.8988	0.6422	23.6
+minisom	atom	50	82	150000		25	0.3	gaussian					0.15	200	upper	1	717	317	0.5579	0.8962	0.6420	23.9
+minisom	atom	50	82	150000		25	0.3	gaussian					0.2013	100	upper	1	719	319	0.5563	0.8988	0.6422	23.5
+minisom	atom	50	82	150000		25	0.3	gaussian					0.2013	200	upper	1	717	317	0.5579	0.8962	0.6420	23.8
+minisom	atom	50	82	150000		25	0.3	gaussian					0.25	100	upper	1	719	319	0.5563	0.8988	0.6422	23.4
+minisom	atom	50	82	150000		25	0.3	gaussian					0.25	200	upper	1	717	317	0.5579	0.8962	0.6420	23.7
+minisom	atom	50	82	150000		25	0.5	gaussian					0.15	100	upper	2	696	243	0.6509	0.8700	0.8213	23.6
+minisom	atom	50	82	150000		25	0.5	gaussian					0.15	200	upper	2	694	242	0.6513	0.8675	0.8208	23.8
+minisom	atom	50	82	150000		25	0.5	gaussian					0.2013	100	upper	2	696	243	0.6509	0.8700	0.8213	23.7
+minisom	atom	50	82	150000		25	0.5	gaussian					0.2013	200	upper	2	694	242	0.6513	0.8675	0.8208	23.8
+minisom	atom	50	82	150000		25	0.5	gaussian					0.25	100	upper	2	696	243	0.6509	0.8700	0.8213	23.9
+minisom	atom	50	82	150000		25	0.5	gaussian					0.25	200	upper	2	694	242	0.6513	0.8675	0.8208	23.9
+minisom	atom	50	82	150000		25	0.7	gaussian					0.15	100	upper	3	249	12	0.9518	0.3113	0.6241	23.4
+minisom	atom	50	82	150000		25	0.7	gaussian					0.15	200	upper	3	229	12	0.9476	0.2863	0.6149	23.6
+minisom	atom	50	82	150000		25	0.7	gaussian					0.2013	100	upper	3	249	12	0.9518	0.3113	0.6241	23.5
+minisom	atom	50	82	150000		25	0.7	gaussian					0.2013	200	upper	3	229	12	0.9476	0.2863	0.6149	23.7
+minisom	atom	50	82	150000		25	0.7	gaussian					0.25	100	upper	3	249	12	0.9518	0.3113	0.6241	23.5
+minisom	atom	50	82	150000		25	0.7	gaussian					0.25	200	upper	3	229	12	0.9476	0.2863	0.6149	23.7
+minisom	atom	50	82	400000			0.3	gaussian					0.15	100	upper	1	752	356	0.5266	0.9400	0.6426	62.3
+minisom	atom	50	82	400000			0.3	gaussian					0.15	200	upper	1	747	352	0.5288	0.9337	0.6416	62.1
+minisom	atom	50	82	400000			0.3	gaussian					0.2013	100	upper	1	752	356	0.5266	0.9400	0.6426	62.1
+minisom	atom	50	82	400000			0.3	gaussian					0.2013	200	upper	1	747	352	0.5288	0.9337	0.6416	63.7
+minisom	atom	50	82	400000			0.3	gaussian					0.25	100	upper	1	752	356	0.5266	0.9400	0.6426	62.4
+minisom	atom	50	82	400000			0.3	gaussian					0.25	200	upper	1	747	352	0.5288	0.9337	0.6416	62.6
+minisom	atom	50	82	400000			0.5	gaussian					0.15	100	upper	2	706	255	0.6388	0.8825	0.8203	62.4
+minisom	atom	50	82	400000			0.5	gaussian					0.15	200	upper	2	702	253	0.6396	0.8775	0.8191	62.5
+minisom	atom	50	82	400000			0.5	gaussian					0.2013	100	upper	2	706	255	0.6388	0.8825	0.8203	62.2
+minisom	atom	50	82	400000			0.5	gaussian					0.2013	200	upper	2	702	253	0.6396	0.8775	0.8191	61.9
+minisom	atom	50	82	400000			0.5	gaussian					0.25	100	upper	2	706	255	0.6388	0.8825	0.8203	61.1
+minisom	atom	50	82	400000			0.5	gaussian					0.25	200	upper	2	702	253	0.6396	0.8775	0.8191	61.7
+minisom	atom	50	82	400000			0.7	gaussian					0.15	100	upper	1	775	376	0.5148	0.9688	0.6466	63.3
+minisom	atom	50	82	400000			0.7	gaussian					0.15	200	upper	1	766	368	0.5196	0.9575	0.6451	62.9
+minisom	atom	50	82	400000			0.7	gaussian					0.2013	100	upper	1	775	376	0.5148	0.9688	0.6466	62.7
+minisom	atom	50	82	400000			0.7	gaussian					0.2013	200	upper	1	766	368	0.5196	0.9575	0.6451	62.8
+minisom	atom	50	82	400000			0.7	gaussian					0.25	100	upper	1	775	376	0.5148	0.9688	0.6466	62.0
+minisom	atom	50	82	400000			0.7	gaussian					0.25	200	upper	1	766	368	0.5196	0.9575	0.6451	62.2
+minisom	atom	50	82	400000		15	0.3	gaussian					0.15	100	upper	3	678	268	0.6047	0.8475	0.6461	62.4
+minisom	atom	50	82	400000		15	0.3	gaussian					0.15	200	upper	3	677	267	0.6056	0.8462	0.6461	62.6
+minisom	atom	50	82	400000		15	0.3	gaussian					0.2013	100	upper	3	678	268	0.6047	0.8475	0.6461	62.3
+minisom	atom	50	82	400000		15	0.3	gaussian					0.2013	200	upper	3	677	267	0.6056	0.8462	0.6461	62.7
+minisom	atom	50	82	400000		15	0.3	gaussian					0.25	100	upper	3	678	268	0.6047	0.8475	0.6461	61.6
+minisom	atom	50	82	400000		15	0.3	gaussian					0.25	200	upper	3	677	267	0.6056	0.8462	0.6461	61.8
+minisom	atom	50	82	400000		15	0.5	gaussian					0.15	100	upper	3	669	234	0.6502	0.8363	0.6610	61.6
+minisom	atom	50	82	400000		15	0.5	gaussian					0.15	200	upper	3	672	236	0.6488	0.8400	0.6615	61.7
+minisom	atom	50	82	400000		15	0.5	gaussian					0.2013	100	upper	3	669	234	0.6502	0.8363	0.6610	61.3
+minisom	atom	50	82	400000		15	0.5	gaussian					0.2013	200	upper	3	672	236	0.6488	0.8400	0.6615	61.7
+minisom	atom	50	82	400000		15	0.5	gaussian					0.25	100	upper	3	669	234	0.6502	0.8363	0.6610	61.6
+minisom	atom	50	82	400000		15	0.5	gaussian					0.25	200	upper	3	672	236	0.6488	0.8400	0.6615	61.6
+minisom	atom	50	82	400000		15	0.7	gaussian					0.15	100	upper	5	633	202	0.6809	0.7913	0.5097	60.6
+minisom	atom	50	82	400000		15	0.7	gaussian					0.15	200	upper	5	632	201	0.6820	0.7900	0.5098	61.6
+minisom	atom	50	82	400000		15	0.7	gaussian					0.2013	100	upper	5	633	202	0.6809	0.7913	0.5097	61.7
+minisom	atom	50	82	400000		15	0.7	gaussian					0.2013	200	upper	5	632	201	0.6820	0.7900	0.5098	61.6
+minisom	atom	50	82	400000		15	0.7	gaussian					0.25	100	upper	5	633	202	0.6809	0.7913	0.5097	61.3
+minisom	atom	50	82	400000		15	0.7	gaussian					0.25	200	upper	5	632	201	0.6820	0.7900	0.5098	61.4
+minisom	atom	50	82	400000		25	0.3	gaussian					0.15	100	upper	1	761	361	0.5256	0.9513	0.6456	61.1
+minisom	atom	50	82	400000		25	0.3	gaussian					0.15	200	upper	1	760	360	0.5263	0.9500	0.6455	61.1
+minisom	atom	50	82	400000		25	0.3	gaussian					0.2013	100	upper	1	761	361	0.5256	0.9513	0.6456	61.0
+minisom	atom	50	82	400000		25	0.3	gaussian					0.2013	200	upper	1	760	360	0.5263	0.9500	0.6455	60.4
+minisom	atom	50	82	400000		25	0.3	gaussian					0.25	100	upper	1	761	361	0.5256	0.9513	0.6456	60.5
+minisom	atom	50	82	400000		25	0.3	gaussian					0.25	200	upper	1	760	360	0.5263	0.9500	0.6455	60.0
+minisom	atom	50	82	400000		25	0.5	gaussian					0.15	100	upper	2	185	0	1.0000	0.2313	0.7694	60.5
+minisom	atom	50	82	400000		25	0.5	gaussian					0.15	200	upper	2	185	0	1.0000	0.2313	0.7694	60.5
+minisom	atom	50	82	400000		25	0.5	gaussian					0.2013	100	upper	2	185	0	1.0000	0.2313	0.7694	60.5
+minisom	atom	50	82	400000		25	0.5	gaussian					0.2013	200	upper	2	185	0	1.0000	0.2313	0.7694	60.0
+minisom	atom	50	82	400000		25	0.5	gaussian					0.25	100	upper	2	185	0	1.0000	0.2313	0.7694	59.7
+minisom	atom	50	82	400000		25	0.5	gaussian					0.25	200	upper	2	185	0	1.0000	0.2313	0.7694	59.7
+minisom	atom	50	82	400000		25	0.7	gaussian					0.15	100	upper	2	132	0	1.0000	0.1650	0.7495	59.6
+minisom	atom	50	82	400000		25	0.7	gaussian					0.15	200	upper	2	130	0	1.0000	0.1625	0.7488	60.1
+minisom	atom	50	82	400000		25	0.7	gaussian					0.2013	100	upper	2	132	0	1.0000	0.1650	0.7495	59.9
+minisom	atom	50	82	400000		25	0.7	gaussian					0.2013	200	upper	2	130	0	1.0000	0.1625	0.7488	60.0
+minisom	atom	50	82	400000		25	0.7	gaussian					0.25	100	upper	2	132	0	1.0000	0.1650	0.7495	59.8
+minisom	atom	50	82	400000		25	0.7	gaussian					0.25	200	upper	2	130	0	1.0000	0.1625	0.7488	60.0
+minisom	atom	50	82	50000			0.3	gaussian					0.15	100	upper	1	710	320	0.5493	0.8875	0.6360	7.4
+minisom	atom	50	82	50000			0.3	gaussian					0.15	200	upper	1	707	318	0.5502	0.8838	0.6352	7.6
+minisom	atom	50	82	50000			0.3	gaussian					0.2013	100	upper	1	710	320	0.5493	0.8875	0.6360	7.5
+minisom	atom	50	82	50000			0.3	gaussian					0.2013	200	upper	1	707	318	0.5502	0.8838	0.6352	7.6
+minisom	atom	50	82	50000			0.3	gaussian					0.15	100	upper	1	710	320	0.5493	0.8875	0.6360	7.6

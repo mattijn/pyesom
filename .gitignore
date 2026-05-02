@@ -222,4 +222,5 @@ uv.lock
 
 # IntraSOM output directory (created by som.train() when save=True)
 Results/
+!tuning/results/
 .DS_Store

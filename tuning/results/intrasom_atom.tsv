@@ -1,0 +1,25 @@
+backend	dataset	grid_rows	grid_cols	iterations	epochs	sigma	learning_rate	neighborhood_function	batch_size	train_len_factor	initialization	mapshape	pareto_fraction	n_threshold_steps	threshold_anchor	n_clusters	n_assigned	n_wrong	purity	coverage	paper_score	elapsed_s
+intrasom	atom	50	82		10							toroid	0.15	100	upper	3	795	262	0.6704	0.9938	0.7163	3.9
+intrasom	atom	50	82		10							toroid	0.15	200	upper	3	795	262	0.6704	0.9938	0.7163	2.9
+intrasom	atom	50	82		10							toroid	0.2013	100	upper	3	795	262	0.6704	0.9938	0.7163	2.6
+intrasom	atom	50	82		10							toroid	0.2013	200	upper	3	795	262	0.6704	0.9938	0.7163	2.8
+intrasom	atom	50	82		10							toroid	0.25	100	upper	3	795	262	0.6704	0.9938	0.7163	2.6
+intrasom	atom	50	82		10							toroid	0.25	200	upper	3	795	262	0.6704	0.9938	0.7163	2.9
+intrasom	atom	50	82		20							toroid	0.15	100	upper	2	797	227	0.7152	0.9962	0.8849	3.3
+intrasom	atom	50	82		20							toroid	0.15	200	upper	2	797	227	0.7152	0.9962	0.8849	3.6
+intrasom	atom	50	82		20							toroid	0.2013	100	upper	2	797	227	0.7152	0.9962	0.8849	3.3
+intrasom	atom	50	82		20							toroid	0.2013	200	upper	2	797	227	0.7152	0.9962	0.8849	3.6
+intrasom	atom	50	82		20							toroid	0.25	100	upper	2	797	227	0.7152	0.9962	0.8849	3.3
+intrasom	atom	50	82		20							toroid	0.25	200	upper	2	797	227	0.7152	0.9962	0.8849	3.6
+intrasom	atom	50	82		50							toroid	0.15	100	upper	2	797	398	0.5006	0.9962	0.7991	5.7
+intrasom	atom	50	82		50							toroid	0.15	200	upper	2	797	398	0.5006	0.9962	0.7991	5.9
+intrasom	atom	50	82		50							toroid	0.2013	100	upper	2	797	398	0.5006	0.9962	0.7991	5.7
+intrasom	atom	50	82		50							toroid	0.2013	200	upper	2	797	398	0.5006	0.9962	0.7991	6.0
+intrasom	atom	50	82		50							toroid	0.25	100	upper	2	797	398	0.5006	0.9962	0.7991	5.6
+intrasom	atom	50	82		50							toroid	0.25	200	upper	2	797	398	0.5006	0.9962	0.7991	6.0
+intrasom	atom	50	82		100							toroid	0.15	100	upper	4	796	204	0.7437	0.9950	0.5960	9.5
+intrasom	atom	50	82		100							toroid	0.15	200	upper	4	796	204	0.7437	0.9950	0.5960	9.7
+intrasom	atom	50	82		100							toroid	0.2013	100	upper	4	796	204	0.7437	0.9950	0.5960	9.7
+intrasom	atom	50	82		100							toroid	0.2013	200	upper	4	796	204	0.7437	0.9950	0.5960	9.6
+intrasom	atom	50	82		100							toroid	0.25	100	upper	4	796	204	0.7437	0.9950	0.5960	9.5
+intrasom	atom	50	82		100							toroid	0.25	200	upper	4	796	204	0.7437	0.9950	0.5960	9.7
