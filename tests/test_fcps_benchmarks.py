@@ -30,7 +30,7 @@ def test_fcps_esom_pipeline_smoke():
     """Fast smoke test — validates imports and wiring."""
     data, cls = load_fcps("atom", npz_path=_FCPS_NPZ)
     data = _zscore(data)
-    som = ESOM(14, 16, data.shape[1], random_seed=0)
+    som = ESOM(14, 16, data.shape[1], backend="minisom", random_seed=0)
     som.fit(data, iterations=800)
     u = som.u_matrix()
     p = compute_pmatrix(som.weights, data, pareto_fraction=None)
@@ -48,7 +48,7 @@ def test_fcps_atom_adjusted_rand():
     data, cls = load_fcps("atom", npz_path=_FCPS_NPZ)
     data = _zscore(data)
     gx, gy = 55, 65
-    som = ESOM(gx, gy, data.shape[1], random_seed=42)
+    som = ESOM(gx, gy, data.shape[1], backend="minisom", random_seed=42)
     som.fit(data, iterations=40_000)
     u = som.u_matrix()
     p = compute_pmatrix(som.weights, data, pareto_fraction=None)
@@ -65,7 +65,7 @@ def test_hepta_reasonable():
     data, cls = load_fcps("hepta", npz_path=_FCPS_NPZ)
     data = _zscore(data)
     gx, gy = 32, 36
-    som = ESOM(gx, gy, data.shape[1], random_seed=7)
+    som = ESOM(gx, gy, data.shape[1], backend="minisom", random_seed=7)
     som.fit(data, iterations=15_000)
     u = som.u_matrix()
     p = compute_pmatrix(som.weights, data, pareto_fraction=None)

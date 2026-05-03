@@ -20,17 +20,18 @@ Optional extras:
 
 | `backend` | Trainer | Notes |
 |-----------|-----------|--------|
-| **`minisom`** (default) | [MiniSom](https://github.com/JustGlowing/minisom) | Sequential updates; core dependency. |
-| **`sompy`** | SomPy | Batch updates; requires `pip install '.[sompy]'` in the same environment as your notebook or tests. |
+| **`minisom`** (default) | [MiniSom](https://github.com/JustGlowing/minisom) | Sequential updates; lightweight core dependency. |
+| **`intrasom`** | [IntraSOM](https://github.com/alankbi/intrasom) | Batch trainer; supports toroidal and hexagonal lattice. Recommended for TopoSwarm. |
+| **`sompy`** | SomPy | Batch updates; requires `pip install '.[sompy]'`. |
 | **`torchsom`** | [torchsom](https://pypi.org/project/torchsom/) | PyTorch batch trainer; requires `pip install '.[torchsom]'`. |
 
 Example:
 
 ```python
-som = ESOM(35, 42, data.shape[1], random_seed=0, backend="minisom")  # default
-# som = ESOM(35, 42, data.shape[1], random_seed=0, backend="sompy")   # pip install '.[sompy]'
-# som = ESOM(35, 42, data.shape[1], random_seed=0, backend="torchsom") # pip install '.[torchsom]'
-som.fit(data, iterations=20_000)
+som = ESOM(n_nodes=50, random_seed=0)                      # minisom by default
+# som = ESOM(n_nodes=50, backend="intrasom",               # recommended for TopoSwarm
+#            intrasom_kwargs={"mapshape": "toroid", "lattice": "hexa"})
+som.fit(data, epochs=20)
 ```
 
 ## Quick start
@@ -42,27 +43,26 @@ from pyesom import ESOM, UStarFloodClustering, compute_pmatrix
 data = np.random.randn(500, 4)
 data = (data - data.mean(0)) / (data.std(0) + 1e-9)
 
-som = ESOM(35, 42, data.shape[1], random_seed=0)
-som.fit(data, iterations=20_000)
+som = ESOM(n_nodes=50, random_seed=0)
+som.fit(data, epochs=20)
 
 u = som.u_matrix()
 p = compute_pmatrix(som.weights, data, pareto_fraction=None)
 
-clf = UStarFloodClustering(min_cluster_size=5, n_threshold_steps=100)
+clf = UStarFloodClustering(min_cluster_size=5, threshold_anchor="upper")
 clf.fit(u, p)
 labels = clf.predict(som.bmu_indices(data))
 ```
 
 ## Layout
 
-| Module | Role |
+| Module / path | Role |
 |--------|------|
-| `pyesom.projection.esom` | ESOM (`ESOM`): MiniSom or SomPy backend; PCA/random weight init for MiniSom |
+| `pyesom.projection.esom` | `ESOM`: pluggable backends (minisom, intrasom, sompy, torchsom) |
 | `pyesom.topology` | `compute_umatrix`, `compute_pmatrix`, `compute_ustar` |
-| `pyesom.clustering` | `UStarFloodClustering` |
-| `pyesom.visualization` | Altair topographic maps & component planes |
-
-Out of scope for v0.1 (placeholders): Pswarm projection, DBS geodesic clustering (`projection/pswarm.py`, `clustering/dbs.py`).
+| `pyesom.clustering` | `UStarFloodClustering` — U*F flood-fill with automatic threshold |
+| `pyesom.visualization` | Altair topographic maps and component planes |
+| `toposwarm/` | Julia swarm-projection stage; see [`toposwarm/README.md`](toposwarm/README.md) |
 
 ## Benchmarks
 

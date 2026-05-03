@@ -11,7 +11,7 @@ from pyesom import ESOM, SomLattice, reshape_flat_codebook
 def test_umatrix_matches_esom():
     rng = np.random.default_rng(0)
     data = rng.standard_normal((40, 5))
-    som = ESOM(6, 7, 5, random_seed=1)
+    som = ESOM(6, 7, 5, backend="minisom", random_seed=1)
     som.fit(data, iterations=500)
     lat = SomLattice.from_esom(som)
     u_som = som.u_matrix()
@@ -23,7 +23,7 @@ def test_umatrix_matches_esom():
 def test_bmu_hit_component_match_esom():
     rng = np.random.default_rng(2)
     data = rng.standard_normal((25, 4))
-    som = ESOM(5, 4, 4, random_seed=3)
+    som = ESOM(5, 4, 4, backend="minisom", random_seed=3)
     som.fit(data, iterations=400)
     lat = SomLattice.from_esom(som)
     np.testing.assert_array_equal(som.bmu_indices(data), lat.bmu_indices(data))

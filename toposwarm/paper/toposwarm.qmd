@@ -1,0 +1,717 @@
+---
+title: "TopoSwarm: SOM for speed, swarm for truth"
+author: "Mattijn van Hoek"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "show code"
+    self-contained: true
+jupyter: pyesom
+bibliography: references.bib
+---
+
+You have a large dataset and want to see its structure as a 2D map. A Self-Organizing
+Map does this well at scale, but the neighbourhood function that drives training also
+shapes the final layout: prototypes land where the grid expects them, not exactly where
+the data places them. The topology is approximately right, but carries a grid-geometry
+imprint.
+
+The Databionic Swarm [@thrun2018] was designed to fix this. It lets each sample find
+its own position on a toroidal grid by minimising a stress function, with no
+neighbourhood bias at all. The layout then reflects the data's own topology. The
+problem: it needs one bot per sample, and Thrun and Ultsch note that beyond roughly
+4,000 samples, computation exceeds a day on a single core [@thrun2021].
+
+**TopoSwarm** sidesteps that limit. A SOM first compresses $N$ samples into
+$n \ll N$ prototypes; the swarm then projects only those $n$ prototypes onto the
+toroidal grid. The dataset size $N$ stops mattering to the projection stage. On the
+LSUN benchmark, four ground-truth clusters come out cleanly via U\*F flood-fill,
+with a final stress of 0.014.
+
+---
+
+## Why not just use a SOM?
+
+A SOM gives you a map quickly. The catch is that the neighbourhood function couples
+compression and topology during training: the grid geometry influences where
+prototypes land, not just how close they sit to each other. Close things in feature
+space end up close on the grid, which is good, but the exact arrangement reflects
+the training grid as much as the data.
+
+If you want the layout to reflect only the data, you need to decouple the two stages.
+The Databionic Swarm [@thrun2018] does this by letting each sample find its position
+freely, minimising stress with no neighbourhood bias. But operating on all $N$ raw
+samples is expensive; Thrun and Ultsch report that beyond roughly 4,000 samples,
+a single-core run exceeds a day [@thrun2021].
+
+TopoSwarm decouples **compression** from **projection** while keeping the swarm tractable:
+
+| Stage | Input | Output | Complexity |
+|---|---|---|---|
+| SOM quantization | $N \times d$ raw data | $n$ prototype weight vectors | $O(N \cdot n)$ per epoch |
+| Swarm projection | $n \times n$ distance matrix | grid position per prototype | $O(n^2)$ per epoch |
+| Sample assignment | $N$ BMU indices | grid position per raw sample | $O(N)$ |
+
+With $n \ll N$ prototypes the swarm stage stays fast regardless of dataset size.
+
+---
+
+## What happens inside
+
+### The algorithm in pictures
+
+```{=html}
+<style>
+  .ts-card {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 1rem;
+    background: #fff;
+  }
+  .ts-label {
+    font-family: monospace;
+    font-size: 0.65rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.3rem;
+  }
+  .ts-card h3 {
+    font-size: 0.9rem;
+    margin-bottom: 0.7rem;
+    font-weight: 600;
+  }
+  .ts-card svg { width: 100%; height: auto; display: block; }
+</style>
+```
+
+::: {layout-ncol=2}
+
+::: {#fig-som-compression}
+```{=html}
+<div class="ts-card">
+  <div class="ts-label">Stage 1 — Quantization</div>
+  <h3>SOM Compression</h3>
+    <svg viewBox="0 0 340 260" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrQ" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#6c757d"/>
+        </marker>
+      </defs>
+      <line x1="155" y1="18" x2="155" y2="233" stroke="rgba(0,0,0,0.08)" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="80"  y="16" fill="#6c757d" font-size="8" font-family="monospace" text-anchor="middle">raw data</text>
+      <text x="255" y="16" fill="#6c757d" font-size="8" font-family="monospace" text-anchor="middle">prototypes</text>
+      <!-- cluster A dots (orange) -->
+      <circle cx="45" cy="55" r="3" fill="#ea580c" opacity="0.7"/>
+      <circle cx="62" cy="48" r="3" fill="#ea580c" opacity="0.7"/>
+      <circle cx="52" cy="72" r="3" fill="#ea580c" opacity="0.7"/>
+      <circle cx="78" cy="58" r="3" fill="#ea580c" opacity="0.7"/>
+      <circle cx="68" cy="75" r="3" fill="#ea580c" opacity="0.7"/>
+      <circle cx="88" cy="50" r="3" fill="#ea580c" opacity="0.7"/>
+      <!-- cluster B dots (purple) -->
+      <circle cx="42" cy="120" r="3" fill="#7c3aed" opacity="0.7"/>
+      <circle cx="58" cy="113" r="3" fill="#7c3aed" opacity="0.7"/>
+      <circle cx="48" cy="138" r="3" fill="#7c3aed" opacity="0.7"/>
+      <circle cx="74" cy="122" r="3" fill="#7c3aed" opacity="0.7"/>
+      <circle cx="66" cy="140" r="3" fill="#7c3aed" opacity="0.7"/>
+      <circle cx="84" cy="116" r="3" fill="#7c3aed" opacity="0.7"/>
+      <!-- cluster C dots (teal) -->
+      <circle cx="48" cy="186" r="3" fill="#0891b2" opacity="0.7"/>
+      <circle cx="65" cy="195" r="3" fill="#0891b2" opacity="0.7"/>
+      <circle cx="44" cy="208" r="3" fill="#0891b2" opacity="0.7"/>
+      <circle cx="76" cy="190" r="3" fill="#0891b2" opacity="0.7"/>
+      <circle cx="70" cy="207" r="3" fill="#0891b2" opacity="0.7"/>
+      <circle cx="90" cy="198" r="3" fill="#0891b2" opacity="0.7"/>
+      <!-- compress arrow -->
+      <line x1="148" y1="130" x2="180" y2="130" stroke="#6c757d" stroke-width="2" marker-end="url(#arrQ)"/>
+      <text x="164" y="122" fill="#6c757d" font-size="8" font-family="monospace" text-anchor="middle">compress</text>
+      <!-- connecting lines (centroid → prototype) -->
+      <line x1="66" y1="60"  x2="217" y2="68"  stroke="#ea580c" stroke-width="1" stroke-dasharray="3,3" opacity="0.4"/>
+      <line x1="62" y1="125" x2="222" y2="128" stroke="#7c3aed" stroke-width="1" stroke-dasharray="3,3" opacity="0.4"/>
+      <line x1="65" y1="197" x2="218" y2="188" stroke="#0891b2" stroke-width="1" stroke-dasharray="3,3" opacity="0.4"/>
+      <!-- prototypes -->
+      <circle cx="235" cy="68"  r="11" fill="#ea580c" opacity="0.85"/>
+      <circle cx="240" cy="128" r="11" fill="#7c3aed" opacity="0.85"/>
+      <circle cx="235" cy="188" r="11" fill="#0891b2" opacity="0.85"/>
+      <text x="252" y="72"  fill="#ea580c" font-size="9" font-family="monospace">w₁</text>
+      <text x="257" y="132" fill="#7c3aed" font-size="9" font-family="monospace">w₂</text>
+      <text x="252" y="192" fill="#0891b2" font-size="9" font-family="monospace">w₃</text>
+      <text x="80"  y="242" fill="#6c757d" font-size="8" font-family="monospace" text-anchor="middle">N = 404 samples</text>
+      <text x="248" y="242" fill="#6c757d" font-size="8" font-family="monospace" text-anchor="middle">n = 50 nodes</text>
+    </svg>
+</div>
+```
+A SOM compresses $N$ raw samples into $n \ll N$ prototype weight vectors. Only the weights and hit counts are kept; the SOM grid topology is discarded.
+:::
+
+::: {#fig-polar-jump}
+```{=html}
+<div class="ts-card">
+  <div class="ts-label">Stage 2 — Jump Candidates</div>
+  <h3>Polar Jump Positions</h3>
+    <svg viewBox="0 0 340 260" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="rg1" cx="50%" cy="50%">
+          <stop offset="0%" stop-color="#0891b2" stop-opacity="0.12"/>
+          <stop offset="100%" stop-color="#0891b2" stop-opacity="0"/>
+        </radialGradient>
+        <marker id="arr1" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#d97706"/>
+        </marker>
+      </defs>
+      <ellipse cx="170" cy="130" rx="110" ry="110" fill="url(#rg1)"/>
+      <circle cx="170" cy="130" r="20"  fill="none" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>
+      <circle cx="170" cy="130" r="40"  fill="none" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>
+      <circle cx="170" cy="130" r="60"  fill="none" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>
+      <circle cx="170" cy="130" r="80"  fill="none" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>
+      <circle cx="170" cy="130" r="100" fill="none" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>
+      <line x1="170" y1="30"  x2="170" y2="230" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/>
+      <line x1="70"  y1="130" x2="270" y2="130" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/>
+      <line x1="99"  y1="59"  x2="241" y2="201" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/>
+      <line x1="241" y1="59"  x2="99"  y2="201" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/>
+      <text x="174" y="115" fill="#0891b2" font-size="8" font-family="monospace" opacity="0.8">R1</text>
+      <text x="174" y="95"  fill="#0891b2" font-size="8" font-family="monospace" opacity="0.8">R2</text>
+      <text x="174" y="75"  fill="#0891b2" font-size="8" font-family="monospace" opacity="0.8">R3</text>
+      <text x="174" y="55"  fill="#0891b2" font-size="8" font-family="monospace" opacity="0.8">R4</text>
+      <text x="174" y="35"  fill="#0891b2" font-size="8" font-family="monospace" opacity="0.8">Rmax</text>
+      <circle cx="170" cy="110" r="2.5" fill="#0891b2" opacity="0.9"/>
+      <circle cx="170" cy="150" r="2.5" fill="#0891b2" opacity="0.9"/>
+      <circle cx="150" cy="130" r="2.5" fill="#0891b2" opacity="0.9"/>
+      <circle cx="190" cy="130" r="2.5" fill="#0891b2" opacity="0.9"/>
+      <circle cx="170" cy="90"  r="2.5" fill="#0891b2" opacity="0.7"/>
+      <circle cx="170" cy="170" r="2.5" fill="#0891b2" opacity="0.7"/>
+      <circle cx="130" cy="130" r="2.5" fill="#0891b2" opacity="0.7"/>
+      <circle cx="210" cy="130" r="2.5" fill="#0891b2" opacity="0.7"/>
+      <circle cx="142" cy="102" r="2.5" fill="#0891b2" opacity="0.7"/>
+      <circle cx="198" cy="102" r="2.5" fill="#0891b2" opacity="0.7"/>
+      <circle cx="142" cy="158" r="2.5" fill="#0891b2" opacity="0.7"/>
+      <circle cx="198" cy="158" r="2.5" fill="#0891b2" opacity="0.7"/>
+      <circle cx="170" cy="70"  r="2"   fill="#0891b2" opacity="0.5"/>
+      <circle cx="170" cy="190" r="2"   fill="#0891b2" opacity="0.5"/>
+      <circle cx="110" cy="130" r="2"   fill="#0891b2" opacity="0.5"/>
+      <circle cx="230" cy="130" r="2"   fill="#0891b2" opacity="0.5"/>
+      <circle cx="170" cy="130" r="5" fill="#0891b2" opacity="1"/>
+      <text x="176" y="127" fill="#0891b2" font-size="9" font-family="monospace" font-weight="600">origin</text>
+      <line x1="170" y1="130" x2="170" y2="110" stroke="#d97706" stroke-width="1.5" marker-end="url(#arr1)"/>
+      <text x="176" y="122" fill="#d97706" font-size="8" font-family="monospace">Rmin</text>
+      <rect x="80" y="40" width="180" height="180" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="0.5" stroke-dasharray="3,3"/>
+      <text x="82" y="232" fill="#6c757d" font-size="8" font-family="monospace">Lines × Columns grid</text>
+      <text x="243" y="232" fill="#6c757d" font-size="8" font-family="monospace">(toroid)</text>
+    </svg>
+</div>
+```
+Grid positions encoded as `Complex(row,col)`. $R_\text{min}$ from grid density, $R_\text{max} = \text{Lines}/2$. Annealing sweeps $R_\text{max} \to R_\text{min}$ in integer steps.
+:::
+
+::: {#fig-torus}
+```{=html}
+<div class="ts-card">
+  <div class="ts-label">Stage 2 — Grid Space</div>
+  <h3>Pac-Man Torus</h3>
+    <svg viewBox="0 0 320 270" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="torusGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%"   stop-color="#0891b2" stop-opacity="0.08"/>
+          <stop offset="100%" stop-color="#0891b2" stop-opacity="0.02"/>
+        </linearGradient>
+      </defs>
+      <rect x="60" y="50" width="200" height="170" fill="url(#torusGrad)" stroke="#0891b2" stroke-width="1.5" rx="2"/>
+      <g stroke="rgba(0,0,0,0.1)" stroke-width="0.5">
+        <line x1="60"  y1="90"  x2="260" y2="90"/>
+        <line x1="60"  y1="130" x2="260" y2="130"/>
+        <line x1="60"  y1="170" x2="260" y2="170"/>
+        <line x1="100" y1="50"  x2="100" y2="220"/>
+        <line x1="140" y1="50"  x2="140" y2="220"/>
+        <line x1="180" y1="50"  x2="180" y2="220"/>
+        <line x1="220" y1="50"  x2="220" y2="220"/>
+      </g>
+      <text x="160" y="43"  fill="#0891b2" font-size="8" font-family="monospace" text-anchor="middle" opacity="0.8">↕ wraps to bottom</text>
+      <text x="160" y="235" fill="#0891b2" font-size="8" font-family="monospace" text-anchor="middle" opacity="0.8">↕ wraps to top</text>
+      <text x="32" y="136" fill="#0891b2" font-size="7.5" font-family="monospace" text-anchor="middle" opacity="0.8" transform="rotate(-90,32,136)">↔ wraps right</text>
+      <text x="288" y="136" fill="#0891b2" font-size="7.5" font-family="monospace" text-anchor="middle" opacity="0.8" transform="rotate(90,288,136)">↔ wraps left</text>
+      <circle cx="238" cy="130" r="10" fill="#ea580c" opacity="0.95"/>
+      <text x="238" y="134" fill="white" font-size="8" font-family="monospace" text-anchor="middle">A</text>
+      <circle cx="82" cy="130" r="10" fill="#7c3aed" opacity="0.95"/>
+      <text x="82" y="134" fill="white" font-size="8" font-family="monospace" text-anchor="middle">B</text>
+      <line x1="228" y1="125" x2="92" y2="125" stroke="#adb5bd" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <text x="160" y="118" fill="#6c757d" font-size="8" font-family="monospace" text-anchor="middle">direct = 156px (❌ longer)</text>
+      <line x1="248" y1="135" x2="260" y2="135" stroke="#0891b2" stroke-width="2"/>
+      <line x1="260" y1="135" x2="285" y2="135" stroke="#0891b2" stroke-width="1.5" stroke-dasharray="2,2" opacity="0.5"/>
+      <line x1="35"  y1="135" x2="60"  y2="135" stroke="#0891b2" stroke-width="1.5" stroke-dasharray="2,2" opacity="0.5"/>
+      <line x1="60"  y1="135" x2="72"  y2="135" stroke="#0891b2" stroke-width="2"/>
+      <text x="273" y="129" fill="#0891b2" font-size="10" text-anchor="middle">→</text>
+      <text x="47"  y="129" fill="#0891b2" font-size="10" text-anchor="middle">→</text>
+      <rect x="80" y="148" width="160" height="20" rx="2" fill="rgba(0,0,0,0.04)" stroke="rgba(0,0,0,0.12)"/>
+      <text x="160" y="162" fill="#0891b2" font-size="8.5" font-family="monospace" text-anchor="middle">wrap = 44px (✓ shorter)</text>
+      <rect x="60" y="185" width="200" height="28" rx="2" fill="rgba(0,0,0,0.04)" stroke="rgba(0,0,0,0.12)"/>
+      <text x="160" y="197" fill="#16a34a" font-size="8" font-family="monospace" text-anchor="middle">dx = |xA − xB| = 156</text>
+      <text x="160" y="209" fill="#16a34a" font-size="8" font-family="monospace" text-anchor="middle">d_torus = min(156, W−156+1) = 44</text>
+    </svg>
+</div>
+```
+All four edges wrap. A bot at column 1 and one at column $N$ are neighbours. Removes boundary artefacts that distort rectangular ESOM maps.
+:::
+
+::: {#fig-annealing}
+```{=html}
+<div class="ts-card">
+  <div class="ts-label">Stage 2 — Annealing</div>
+  <h3>Radius Annealing</h3>
+    <svg viewBox="0 0 340 260" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="rg3a" cx="50%" cy="50%">
+          <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.15"/>
+          <stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="rg3b" cx="50%" cy="50%">
+          <stop offset="0%" stop-color="#16a34a" stop-opacity="0.15"/>
+          <stop offset="100%" stop-color="#16a34a" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="timelineGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%"   stop-color="#7c3aed"/>
+          <stop offset="100%" stop-color="#16a34a"/>
+        </linearGradient>
+        <marker id="arr2" markerWidth="5" markerHeight="5" refX="2.5" refY="2.5" orient="auto">
+          <path d="M0,0 L5,2.5 L0,5 Z" fill="#7c3aed"/>
+        </marker>
+        <marker id="arr3" markerWidth="5" markerHeight="5" refX="2.5" refY="2.5" orient="auto">
+          <path d="M0,0 L5,2.5 L0,5 Z" fill="#16a34a"/>
+        </marker>
+      </defs>
+      <rect x="20" y="18" width="300" height="8" rx="4" fill="rgba(0,0,0,0.05)"/>
+      <rect x="20" y="18" width="300" height="8" rx="4" fill="url(#timelineGrad)" opacity="0.6"/>
+      <text x="20"  y="14" fill="#7c3aed" font-size="8" font-family="monospace">Rmax</text>
+      <text x="295" y="14" fill="#16a34a" font-size="8" font-family="monospace">Rmin</text>
+      <text x="150" y="14" fill="#6c757d" font-size="8" font-family="monospace" text-anchor="middle">annealing →</text>
+      <g transform="translate(60, 100)">
+        <circle cx="0" cy="0" r="52" fill="url(#rg3a)" stroke="#7c3aed" stroke-width="1" stroke-dasharray="3,2" opacity="0.8"/>
+        <circle cx="0" cy="0" r="6" fill="#7c3aed"/>
+        <text x="0" y="3" fill="white" font-size="6" font-family="monospace" text-anchor="middle">DB</text>
+        <line x1="6"  y1="-3" x2="38"  y2="-28" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#arr2)" opacity="0.8"/>
+        <line x1="6"  y1="3"  x2="42"  y2="20"  stroke="#7c3aed" stroke-width="1.5" marker-end="url(#arr2)" opacity="0.6"/>
+        <line x1="-6" y1="-3" x2="-40" y2="-15" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#arr2)" opacity="0.5"/>
+        <line x1="-4" y1="5"  x2="-20" y2="44"  stroke="#7c3aed" stroke-width="1.5" marker-end="url(#arr2)" opacity="0.4"/>
+        <circle cx="40"  cy="-30" r="4" fill="none" stroke="#7c3aed" stroke-width="1.5" opacity="0.8"/>
+        <circle cx="44"  cy="22"  r="4" fill="none" stroke="#7c3aed" stroke-width="1.5" opacity="0.6"/>
+        <circle cx="-42" cy="-17" r="4" fill="none" stroke="#7c3aed" stroke-width="1.5" opacity="0.5"/>
+        <circle cx="-22" cy="46"  r="4" fill="none" stroke="#7c3aed" stroke-width="1.5" opacity="0.4"/>
+        <text x="0" y="68" fill="#7c3aed" font-size="8" font-family="monospace" text-anchor="middle">R = Rmax</text>
+        <text x="0" y="79" fill="#6c757d" font-size="7.5" font-family="monospace" text-anchor="middle">50% bots jump</text>
+      </g>
+      <line x1="170" y1="40" x2="170" y2="235" stroke="rgba(0,0,0,0.1)" stroke-width="1" stroke-dasharray="4,3"/>
+      <g transform="translate(260, 130)">
+        <circle cx="0" cy="0" r="22" fill="url(#rg3b)" stroke="#16a34a" stroke-width="1" stroke-dasharray="3,2" opacity="0.9"/>
+        <circle cx="0" cy="0" r="6" fill="#16a34a"/>
+        <text x="0" y="3" fill="white" font-size="6" font-family="monospace" text-anchor="middle">DB</text>
+        <line x1="6"  y1="-2" x2="16" y2="-12" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arr3)" opacity="0.9"/>
+        <line x1="3"  y1="6"  x2="12" y2="18"  stroke="#16a34a" stroke-width="1.5" marker-end="url(#arr3)" opacity="0.7"/>
+        <line x1="-6" y1="-2" x2="-17" y2="-8" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arr3)" opacity="0.6"/>
+        <line x1="-3" y1="6"  x2="-8"  y2="18" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arr3)" opacity="0.5"/>
+        <circle cx="18"  cy="-14" r="3" fill="none" stroke="#16a34a" stroke-width="1.5" opacity="0.9"/>
+        <circle cx="14"  cy="20"  r="3" fill="none" stroke="#16a34a" stroke-width="1.5" opacity="0.7"/>
+        <circle cx="-19" cy="-9"  r="3" fill="none" stroke="#16a34a" stroke-width="1.5" opacity="0.6"/>
+        <circle cx="-9"  cy="20"  r="3" fill="none" stroke="#16a34a" stroke-width="1.5" opacity="0.5"/>
+        <text x="0" y="36" fill="#16a34a" font-size="8" font-family="monospace" text-anchor="middle">R = Rmin</text>
+        <text x="0" y="47" fill="#6c757d" font-size="7.5" font-family="monospace" text-anchor="middle">5% bots jump</text>
+      </g>
+      <rect x="105" y="195" width="130" height="40" rx="2" fill="rgba(0,0,0,0.04)" stroke="rgba(0,0,0,0.12)"/>
+      <text x="170" y="209" fill="#d97706" font-size="8" font-family="monospace" text-anchor="middle">4 candidate positions</text>
+      <text x="170" y="221" fill="#6c757d" font-size="7.5" font-family="monospace" text-anchor="middle">sampled per bot per iteration</text>
+      <text x="170" y="232" fill="#6c757d" font-size="7.5" font-family="monospace" text-anchor="middle">best payoff wins → jump</text>
+    </svg>
+</div>
+```
+Large $R$: ~50% of bots explore widely. Small $R$: ~5% make fine-grained adjustments. Each bot samples **4 random candidates** and keeps the best. Exits at weak Nash equilibrium.
+:::
+
+::: {#fig-convergence}
+```{=html}
+<div class="ts-card">
+  <div class="ts-label">Stage 2 — Convergence</div>
+  <h3>Stress Over Iterations</h3>
+    <svg viewBox="0 0 340 260" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="stressGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stop-color="#ea580c" stop-opacity="0.3"/>
+          <stop offset="100%" stop-color="#ea580c" stop-opacity="0"/>
+        </linearGradient>
+        <clipPath id="chartClip">
+          <rect x="45" y="20" width="280" height="170"/>
+        </clipPath>
+      </defs>
+      <line x1="45" y1="190" x2="330" y2="190" stroke="rgba(0,0,0,0.25)" stroke-width="1.5"/>
+      <line x1="45" y1="20"  x2="45"  y2="190" stroke="rgba(0,0,0,0.25)" stroke-width="1.5"/>
+      <line x1="40" y1="190" x2="45" y2="190" stroke="rgba(0,0,0,0.25)"/>
+      <line x1="40" y1="148" x2="45" y2="148" stroke="rgba(0,0,0,0.25)"/>
+      <line x1="40" y1="106" x2="45" y2="106" stroke="rgba(0,0,0,0.25)"/>
+      <line x1="40" y1="64"  x2="45" y2="64"  stroke="rgba(0,0,0,0.25)"/>
+      <text x="36" y="193" fill="#6c757d" font-size="7" font-family="monospace" text-anchor="end">0</text>
+      <text x="36" y="151" fill="#6c757d" font-size="7" font-family="monospace" text-anchor="end">0.25</text>
+      <text x="36" y="109" fill="#6c757d" font-size="7" font-family="monospace" text-anchor="end">0.50</text>
+      <text x="36" y="67"  fill="#6c757d" font-size="7" font-family="monospace" text-anchor="end">0.75</text>
+      <text x="187" y="210" fill="#6c757d" font-size="8" font-family="monospace" text-anchor="middle">iterations (epochs)</text>
+      <text x="20"  y="110" fill="#6c757d" font-size="8" font-family="monospace" text-anchor="middle" transform="rotate(-90,20,110)">stress</text>
+      <rect x="45"  y="20" width="80"  height="170" fill="#7c3aed" opacity="0.05"/>
+      <rect x="125" y="20" width="70"  height="170" fill="#0891b2" opacity="0.05"/>
+      <rect x="195" y="20" width="60"  height="170" fill="#16a34a" opacity="0.05"/>
+      <rect x="255" y="20" width="75"  height="170" fill="#d97706" opacity="0.05"/>
+      <text x="85"  y="33" fill="#7c3aed" font-size="7" font-family="monospace" text-anchor="middle" opacity="0.8">R=Rmax</text>
+      <text x="160" y="33" fill="#0891b2" font-size="7" font-family="monospace" text-anchor="middle" opacity="0.8">R=mid</text>
+      <text x="225" y="33" fill="#16a34a" font-size="7" font-family="monospace" text-anchor="middle" opacity="0.8">R=low</text>
+      <text x="292" y="33" fill="#d97706" font-size="7" font-family="monospace" text-anchor="middle" opacity="0.8">R=Rmin</text>
+      <path d="M45,60 C55,62 65,68 75,80 C85,95 95,108 105,118 C115,125 120,130 125,133 C135,137 145,140 155,143 C165,146 170,148 175,149 C185,151 195,153 205,156 C215,158 220,159 225,160 C235,162 245,163 255,164 C265,165 270,165 275,166 C285,167 295,167.5 305,168 C315,168.5 325,169 330,169 L330,190 L45,190 Z" fill="url(#stressGrad)" clip-path="url(#chartClip)"/>
+      <path d="M45,60 C55,62 65,68 75,80 C85,95 95,108 105,118 C115,125 120,130 125,133 C135,137 145,140 155,143 C165,146 170,148 175,149 C185,151 195,153 205,156 C215,158 220,159 225,160 C235,162 245,163 255,164 C265,165 270,165 275,166 C285,167 295,167.5 305,168 C315,168.5 325,169 330,169" fill="none" stroke="#ea580c" stroke-width="2" clip-path="url(#chartClip)"/>
+      <line x1="45" y1="170" x2="330" y2="170" stroke="#d97706" stroke-width="1" stroke-dasharray="3,3" opacity="0.7"/>
+      <text x="332" y="173" fill="#d97706" font-size="7" font-family="monospace">ε</text>
+      <line x1="125" y1="20" x2="125" y2="190" stroke="rgba(0,0,0,0.1)" stroke-width="1" stroke-dasharray="2,2"/>
+      <line x1="195" y1="20" x2="195" y2="190" stroke="rgba(0,0,0,0.1)" stroke-width="1" stroke-dasharray="2,2"/>
+      <line x1="255" y1="20" x2="255" y2="190" stroke="rgba(0,0,0,0.1)" stroke-width="1" stroke-dasharray="2,2"/>
+      <circle cx="310" cy="168.5" r="4" fill="none" stroke="#16a34a" stroke-width="1.5"/>
+      <line x1="314" y1="165" x2="325" y2="155" stroke="#16a34a" stroke-width="1"/>
+      <text x="280" y="152" fill="#16a34a" font-size="7.5" font-family="monospace" text-anchor="middle">weak Nash</text>
+      <text x="280" y="162" fill="#16a34a" font-size="7.5" font-family="monospace" text-anchor="middle">equilibrium</text>
+      <rect x="52" y="218" width="235" height="17" rx="2" fill="rgba(0,0,0,0.04)" stroke="rgba(0,0,0,0.1)"/>
+      <text x="169" y="230" fill="#6c757d" font-size="8" font-family="monospace" text-anchor="middle">stop when lm(slope) &lt; ε = 0.01</text>
+    </svg>
+</div>
+```
+Stress drops steeply at large $R$ (exploration), then plateaus. Each coloured band = one radius phase. Convergence declared when the linear slope of recent stress $< \varepsilon$.
+:::
+
+::: {#fig-ustar}
+```{=html}
+<div class="ts-card">
+  <div class="ts-label">Stage 3 — Clustering</div>
+  <h3>U-matrix &amp; U*F</h3>
+    <svg viewBox="0 0 340 260" xmlns="http://www.w3.org/2000/svg">
+      <!-- 6×5 U-matrix grid, cells 44×34, origin (22,25) -->
+      <!-- row 0 -->
+      <rect x="22"  y="25" width="44" height="34" fill="rgb(234,234,234)" stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="66"  y="25" width="44" height="34" fill="rgb(213,213,213)" stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="110" y="25" width="44" height="34" fill="rgb(98,98,98)"    stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="154" y="25" width="44" height="34" fill="rgb(66,66,66)"    stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="198" y="25" width="44" height="34" fill="rgb(108,108,108)" stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="242" y="25" width="44" height="34" fill="rgb(150,150,150)" stroke="#dee2e6" stroke-width="0.5"/>
+      <!-- row 1 -->
+      <rect x="22"  y="59" width="44" height="34" fill="rgb(234,234,234)" stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="66"  y="59" width="44" height="34" fill="rgb(213,213,213)" stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="110" y="59" width="44" height="34" fill="rgb(66,66,66)"    stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="154" y="59" width="44" height="34" fill="rgb(77,77,77)"    stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="198" y="59" width="44" height="34" fill="rgb(150,150,150)" stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="242" y="59" width="44" height="34" fill="rgb(192,192,192)" stroke="#dee2e6" stroke-width="0.5"/>
+      <!-- row 2 -->
+      <rect x="22"  y="93" width="44" height="34" fill="rgb(203,203,203)" stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="66"  y="93" width="44" height="34" fill="rgb(129,129,129)" stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="110" y="93" width="44" height="34" fill="rgb(66,66,66)"    stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="154" y="93" width="44" height="34" fill="rgb(129,129,129)" stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="198" y="93" width="44" height="34" fill="rgb(213,213,213)" stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="242" y="93" width="44" height="34" fill="rgb(234,234,234)" stroke="#dee2e6" stroke-width="0.5"/>
+      <!-- row 3 -->
+      <rect x="22"  y="127" width="44" height="34" fill="rgb(119,119,119)" stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="66"  y="127" width="44" height="34" fill="rgb(66,66,66)"    stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="110" y="127" width="44" height="34" fill="rgb(98,98,98)"    stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="154" y="127" width="44" height="34" fill="rgb(192,192,192)" stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="198" y="127" width="44" height="34" fill="rgb(234,234,234)" stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="242" y="127" width="44" height="34" fill="rgb(234,234,234)" stroke="#dee2e6" stroke-width="0.5"/>
+      <!-- row 4 -->
+      <rect x="22"  y="161" width="44" height="34" fill="rgb(66,66,66)"    stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="66"  y="161" width="44" height="34" fill="rgb(87,87,87)"    stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="110" y="161" width="44" height="34" fill="rgb(150,150,150)" stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="154" y="161" width="44" height="34" fill="rgb(213,213,213)" stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="198" y="161" width="44" height="34" fill="rgb(234,234,234)" stroke="#dee2e6" stroke-width="0.5"/>
+      <rect x="242" y="161" width="44" height="34" fill="rgb(224,224,224)" stroke="#dee2e6" stroke-width="0.5"/>
+      <!-- cluster A overlay (top-left valley) -->
+      <rect x="22" y="25" width="88" height="68" fill="#ea580c" opacity="0.12" rx="2"/>
+      <!-- cluster B overlay (bottom-right valley) -->
+      <rect x="198" y="127" width="88" height="68" fill="#7c3aed" opacity="0.12" rx="2"/>
+      <!-- dots in valleys -->
+      <circle cx="44" cy="42"  r="4" fill="#ea580c" opacity="0.85"/>
+      <circle cx="88" cy="42"  r="4" fill="#ea580c" opacity="0.85"/>
+      <circle cx="44" cy="76"  r="4" fill="#ea580c" opacity="0.85"/>
+      <circle cx="88" cy="76"  r="4" fill="#ea580c" opacity="0.85"/>
+      <circle cx="220" cy="144" r="4" fill="#7c3aed" opacity="0.85"/>
+      <circle cx="264" cy="144" r="4" fill="#7c3aed" opacity="0.85"/>
+      <circle cx="220" cy="178" r="4" fill="#7c3aed" opacity="0.85"/>
+      <circle cx="264" cy="178" r="4" fill="#7c3aed" opacity="0.85"/>
+      <!-- cluster labels -->
+      <text x="55"  y="22"  fill="#ea580c" font-size="8" font-family="monospace" text-anchor="middle">A</text>
+      <text x="253" y="204" fill="#7c3aed" font-size="8" font-family="monospace" text-anchor="middle">B</text>
+      <!-- ridge annotation -->
+      <line x1="132" y1="93" x2="132" y2="18" stroke="#333" stroke-width="0.75"/>
+      <text x="132" y="14"  fill="#333" font-size="8" font-family="monospace" text-anchor="middle">ridge → boundary</text>
+      <!-- legend -->
+      <rect x="22"  y="210" width="13" height="13" fill="rgb(234,234,234)" stroke="#dee2e6" stroke-width="0.5"/>
+      <text x="40"  y="221" fill="#6c757d" font-size="7.5" font-family="monospace">low = valley (cluster)</text>
+      <rect x="185" y="210" width="13" height="13" fill="rgb(66,66,66)"    stroke="#dee2e6" stroke-width="0.5"/>
+      <text x="203" y="221" fill="#6c757d" font-size="7.5" font-family="monospace">high = ridge (boundary)</text>
+      <!-- flood-fill label -->
+      <text x="172" y="242" fill="#6c757d" font-size="8" font-family="monospace" text-anchor="middle">U*F flood-fill assigns each valley → cluster</text>
+    </svg>
+</div>
+```
+The U-matrix maps average neighbour distances onto the grid. U\*F flood-fills from each local minimum, stopping at ridges, to assign cluster membership without a fixed $k$.
+:::
+
+:::
+
+### Step 1: compress with a SOM
+
+A SOM with $n$ nodes is trained on the raw data $\mathbf{X} \in \mathbb{R}^{N \times d}$
+as a **compressor only**; its internal grid topology is discarded. We keep only the
+$n$ prototype weight vectors $\mathbf{W} \in \mathbb{R}^{n \times d}$ and the
+population counts $\mathbf{p} \in \mathbb{N}^n$.
+
+The quality of compression is the **quantization error**:
+
+$$
+\text{QE} = \frac{1}{N} \sum_{i=1}^{N} \| \mathbf{x}_i - \mathbf{w}_{\text{bmu}(i)} \|_2
+$$
+
+Choose $n$ at the elbow of the QE-vs-$n$ curve, where additional nodes stop reducing
+the error meaningfully.
+
+### Step 2: project with a swarm
+
+The $n$ prototype weight vectors are embedded onto the toroidal grid by minimising
+the **population-weighted stress**:
+
+$$
+\mathcal{S} = \frac{\sum_{i<j} p_i p_j \left(\hat{d}^{\text{data}}_{ij} - \hat{d}^{\text{grid}}_{ij}\right)^2}{\sum_{i<j} p_i p_j}
+$$
+
+where $\hat{d}$ denotes distances normalised to $[0, 1]$, and $p_i$ is the
+normalised population of node $i$. Dense nodes dominate the objective over sparse
+boundary nodes.
+
+### Why topology is preserved
+
+$$
+d^{\text{feature}}(\mathbf{x}_i, \mathbf{x}_j)
+\;\approx\; d^{\text{feature}}(\mathbf{w}_{\text{bmu}(i)}, \mathbf{w}_{\text{bmu}(j)})
+\;\approx\; d^{\text{grid}}(\text{pos}_i, \text{pos}_j)
+$$
+
+The first approximation is controlled by QE; the second by final stress $\mathcal{S}$.
+Because both are measurable at runtime, the chain is auditable end-to-end: a low QE
+with a high stress points to the swarm stage; a high QE with a low stress points to
+the SOM.
+
+### Step 3: read the clusters from the U-matrix
+
+Once the swarm has settled, each occupied grid cell gets a **U-matrix** value: the
+average feature-space distance to its immediately adjacent occupied neighbours
+[@ultsch2003]. Low values mean nearby prototypes are similar; the cell sits inside a
+cluster. High values mean a sharp boundary; the cell sits on a ridge between clusters.
+Unoccupied cells are left as $\mathrm{NaN}$.
+
+Most clustering algorithms ask you to pick $k$ before you look at the data. U\*F
+does not. The number of clusters is a property of the map, not a parameter you
+supply. **U\*F flood-fill** reads $k$ directly from the topology:
+
+1. Seed one flood from every local minimum on the U-matrix.
+2. Each flood expands outward to neighbouring cells in order of increasing U-value.
+3. A flood stops when it hits a cell above a threshold derived from the upper tail of
+   the U-matrix distribution (`threshold_anchor="upper"`). That cell becomes a ridge.
+4. Any cell claimed by two different floods becomes a ridge too.
+5. Floods that cover fewer than `min_cluster_size` nodes are discarded.
+
+What comes out is a partition that follows the natural valleys of the map. If there
+are four valleys separated by ridges, you get four clusters. If two valleys merge
+into one broad basin, they come out as one. The data decides.
+
+---
+
+## The code
+
+The SOM quantization stage uses Python (`pyesom`, IntraSOM backend). The swarm
+projection stage runs in Julia (`TopoSwarm.jl`). The two stages communicate via
+a single `.npz` file.
+
+### Training the SOM
+
+```{python}
+#| label: setup
+#| output: false
+
+from pathlib import Path
+import numpy as np
+from pyesom import ESOM
+
+root = Path("../..").resolve()
+z = np.load(root / "tests/fixtures/fcps.npz")
+X_lsun   = z["lsun_data"].astype(np.float64)
+cls_lsun = z["lsun_cls"].astype(int)
+print(f"lsun: {X_lsun.shape}  classes: {np.unique(cls_lsun)}")
+```
+
+#### Export the bridge file
+
+```{python}
+#| label: export-bridge
+#| output: false
+
+esom = ESOM(n_nodes=50, backend="intrasom",
+            intrasom_kwargs={"mapshape": "toroid", "lattice": "hexa"})
+esom.fit(X_lsun, epochs=20)
+
+bridge_path = Path("bridge.npz")
+result_path = Path("result.npz")
+esom.export_npz(bridge_path, X_lsun, labels=cls_lsun)
+
+qe = esom.quantization_error(X_lsun)
+print(f"Quantization error : {qe:.4f}")
+print(f"Bridge written to  : {bridge_path}")
+```
+
+### Running the swarm
+
+```{python}
+#| label: run-toposwarm
+#| output: true
+
+import subprocess
+
+repo_root   = Path("../..").resolve()
+script      = repo_root / "toposwarm/scripts/run_pswarm.jl"
+julia_proj  = repo_root / "toposwarm"
+
+proc = subprocess.run(
+    ["julia", f"--project={julia_proj}", str(script),
+     str(bridge_path.resolve()), str(result_path.resolve())],
+    capture_output=True, text=True, cwd=repo_root,
+)
+print(proc.stdout)
+if proc.returncode != 0:
+    print(proc.stderr)
+    raise RuntimeError("Julia step failed — see stderr above")
+```
+
+### Results
+
+```{python}
+#| label: load-results
+#| output: false
+
+r           = np.load(result_path)
+b           = np.load(bridge_path)
+sample_rows = r["sample_rows"]
+sample_cols = r["sample_cols"]
+node_rows   = r["node_rows"]
+node_cols   = r["node_cols"]
+U           = r["umatrix"]
+stress      = float(r["stress"][0])
+hit_map     = b["hit_map"]
+
+# Build P-matrix grid: place hit counts at occupied node positions (Julia is 1-based)
+P = np.zeros_like(U)
+for k, (nr, nc) in enumerate(zip(node_rows, node_cols)):
+    P[nr - 1, nc - 1] = hit_map[k]
+```
+
+```{python}
+#| label: ustar-clustering
+
+from pyesom.clustering.ustar_flood import UStarFloodClustering
+
+# NaN cells (unoccupied) become the max U-height so they act as ridges/barriers
+U_filled = np.where(np.isnan(U), float(np.nanmax(U)), U)
+
+clf = UStarFloodClustering(min_cluster_size=2, threshold_anchor="upper")
+clf.fit(U_filled, P)
+
+# predict needs 0-based (row, col); Julia exports 1-based
+bmu_2d         = np.column_stack([sample_rows - 1, sample_cols - 1])
+cluster_labels = clf.predict(bmu_2d)
+
+print(f"U*F threshold : {clf.threshold_:.4f}")
+print(f"Clusters found: {clf.n_clusters_}")
+
+# Confusion table: true class vs. U*F cluster
+classes  = np.unique(cls_lsun)
+clusters = np.arange(clf.n_clusters_)
+header   = f"{'true \\ cluster':<14}" + "".join(f"{c:>6}" for c in clusters) + f"{'unassigned':>12}"
+print("\n" + header)
+print("-" * len(header))
+for cls in classes:
+    mask = cls_lsun == cls
+    row  = f"{cls:<14}"
+    for cid in clusters:
+        row += f"{int(np.sum((cluster_labels == cid) & mask)):>6}"
+    row += f"{int(np.sum((cluster_labels == -1) & mask)):>12}"
+    print(row)
+```
+
+---
+
+## How well does it work?
+
+```{python}
+#| label: tbl-metrics
+#| tbl-cap: "End-to-end quality metrics on the lsun benchmark."
+
+from sklearn.manifold import trustworthiness
+
+grid_coords = np.column_stack([sample_rows, sample_cols]).astype(float)
+tw = trustworthiness(X_lsun, grid_coords, n_neighbors=10)
+
+print(f"{'Metric':<28} {'Value':>8}")
+print("-" * 38)
+print(f"{'Quantization error (QE)':<28} {qe:>8.4f}")
+print(f"{'Projection stress':<28} {stress:>8.4f}")
+print(f"{'Trustworthiness (k=10)':<28} {tw:>8.4f}")
+```
+
+| Metric | Interpretation |
+|---|---|
+| **Quantization error** | Mean distance from each raw sample to its prototype. Governs Stage 1 fidelity. |
+| **Projection stress** | Mean squared normalised rank error between prototype distances and grid distances. Governs Stage 2 fidelity. |
+| **Trustworthiness** | Fraction of true $k$-nearest neighbours preserved in the projection. 1.0 = perfect; >0.9 = good. |
+
+---
+
+## How does it scale?
+
+```{python}
+#| label: tbl-scaling
+#| tbl-cap: "Runtime scaling. SOM: 20 epochs. Swarm: max 200 epochs."
+#| echo: false
+
+rows = [
+    ("lsun benchmark",  404,      50,   "seconds"),
+    ("medium dataset",  50_000,  500,   "minutes"),
+    ("large dataset",   200_000, 1_500, "minutes"),
+    ("500K use case",   500_000, 2_000, "tens of minutes"),
+]
+print(f"{'Dataset':<22} {'N':>8} {'n_nodes':>9}  {'Expected runtime'}")
+print("-" * 58)
+for name, N, n, rt in rows:
+    print(f"{name:<22} {N:>8,} {n:>9,}  {rt}")
+```
+
+---
+
+## Wrapping up
+
+If you want topology-honest 2D maps from large datasets, the bottleneck has always
+been the swarm stage. TopoSwarm removes it by running the swarm only on
+$n$ prototypes, not on all $N$ raw samples. The dataset size stops mattering
+to the projection.
+
+Each stage is independently tunable. Swap the SOM backend, retrain, and check
+quantization error without touching the swarm. Run the swarm longer and check
+stress without retraining the SOM. When something looks off on the map, the
+metrics tell you which stage to adjust.
+
+The output is a toroidal grid with a U-matrix and U\*F cluster boundaries,
+readable the same way as the original Databionic Swarm, just no longer limited
+to small datasets.
+
+---
+
+## References
+
+::: {#refs}
+:::

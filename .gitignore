@@ -218,9 +218,18 @@ __marimo__/
 .streamlit/secrets.toml
 resources/
 AGENT.md
+AGENT2.md
 uv.lock
 
 # IntraSOM output directory (created by som.train() when save=True)
 Results/
 !tuning/results/
 .DS_Store
+
+# Quarto
+.quarto/
+*.quarto_ipynb
+*_files/
+toposwarm/paper/*.tex
+toposwarm/paper/bridge.npz
+toposwarm/paper/result.npz

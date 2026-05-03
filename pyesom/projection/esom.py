@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -14,18 +16,46 @@ _SUPPORTED_BACKENDS = frozenset({"minisom", "sompy", "torchsom", "intrasom"})
 
 class ESOM:
     """
-    Emergent Self-Organizing Map (large grid, topology-forward interpretation).
+    Emergent Self-Organizing Map — train, inspect, and export SOM projections.
 
-    Training is selected via ``backend`` (default ``minisom``). Helpers cover
-    U-matrix, hit counts, BMUs, and component planes.
+    Grid size can be specified in two ways:
+
+    * **Explicit grid** — pass ``x`` and ``y`` (rows × cols).  Use this when you
+      want direct control over the map dimensions, e.g. for ESOM visualisation.
+    * **Node count** — pass ``n_nodes``.  The grid side is computed automatically
+      as ``ceil(sqrt(n_nodes))``.  Use this for the TopoSwarm pipeline where only
+      the number of representative prototypes matters, not the grid shape.
+
+    Parameters
+    ----------
+    x, y
+        Grid dimensions (rows × cols).  Mutually exclusive with ``n_nodes``.
+    n_features
+        Expected input dimensionality.  Optional — inferred from ``fit(data)`` if
+        omitted.  When provided, ``fit`` validates the data shape against it.
+    n_nodes
+        Target number of prototype nodes.  Mutually exclusive with ``x``/``y``.
+        Actual node count after training may differ slightly (e.g. IntraSOM rounds
+        rows to even for hexagonal lattices).
+    backend
+        ``"minisom"`` (default), ``"sompy"``, ``"torchsom"``, or ``"intrasom"``.
+    sigma
+        Initial neighbourhood radius.
+    learning_rate
+        Passed to MiniSom or TorchSOM.
+    random_seed
+        Reproducibility seed where the backend supports it.
+    sompy_kwargs, torchsom_kwargs, intrasom_kwargs
+        Extra keyword arguments forwarded to the respective backend.
     """
 
     def __init__(
         self,
-        x: int,
-        y: int,
-        n_features: int,
+        x: int | None = None,
+        y: int | None = None,
+        n_features: int | None = None,
         *,
+        n_nodes: int | None = None,
         backend: str = "minisom",
         sigma: float | None = None,
         learning_rate: float = 0.5,
@@ -35,62 +65,28 @@ class ESOM:
         intrasom_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
-        """
-        Parameters
-        ----------
-        x, y
-            Grid dimensions (rows × cols).
-        n_features
-            Expected input dimensionality (checked against ``fit(data)``).
-        backend
-            ``\"minisom\"`` (default): sequential MiniSom training.
+        # ── grid size resolution ──────────────────────────────────────
+        explicit = (x is not None) or (y is not None)
+        if explicit and n_nodes is not None:
+            raise ValueError("specify either (x, y) or n_nodes, not both")
+        if not explicit and n_nodes is None:
+            raise ValueError("specify either (x, y) or n_nodes")
+        if n_nodes is not None:
+            side = math.ceil(math.sqrt(int(n_nodes)))
+            x = y = side
+        if x is None or y is None:
+            raise ValueError("both x and y must be provided when not using n_nodes")
 
-            ``\"sompy\"``: batch SOMPY trainer (:mod:`sompy`). Requires installing sompy,
-            e.g. ``pip install 'sompy @ git+https://github.com/sevamoo/SOMPY.git'``.
-            Extra keyword arguments for ``SOMFactory.build`` go in ``sompy_kwargs``.
-
-            ``\"torchsom\"``: PyTorch batch trainer (:mod:`torchsom`). Requires
-            ``pip install -e ".[torchsom]"`` (PyPI ``torchsom`` + ``torch``).
-            Extra keyword arguments for ``SOM.__init__`` go in ``torchsom_kwargs``
-            (e.g. ``epochs``, ``batch_size``, ``topology``).
-
-            ``\"intrasom\"``: IntraSOM batch trainer (:mod:`intrasom`). Supports
-            **toroidal** and hexagonal grids. Requires ``pip install -e ".[intrasom]"``.
-            Defaults: ``mapshape="toroid"``, ``lattice="hexa"``. Extra keyword arguments
-            go in ``intrasom_kwargs`` (e.g. ``mapshape``, ``lattice``,
-            ``train_rough_len``, ``train_finetune_len``).
-        sigma
-            Initial neighbourhood radius.  MiniSom default: ``max(x, y) / 2``.
-            TorchSOM default: ``1.0``.  Ignored by sompy.
-        learning_rate
-            Passed to MiniSom or TorchSOM (sompy controls this internally).
-        random_seed
-            Used where the backend supports it.
-        sompy_kwargs
-            Forwarded to ``sompy.SOMFactory.build`` when ``backend=\"sompy\"``.
-        torchsom_kwargs
-            Forwarded to ``torchsom.SOM.__init__`` when ``backend=\"torchsom\"``.
-            Supported keys include ``epochs`` (default 10), ``batch_size`` (default 32),
-            ``topology``, ``neighborhood_function``, ``distance_function``,
-            ``initialization_mode``, etc.
-        intrasom_kwargs
-            Forwarded to ``intrasom.SOMFactory.build`` and ``som.train`` when
-            ``backend=\"intrasom\"``. Supported keys include ``mapshape`` (default
-            ``\"toroid\"``), ``lattice`` (default ``\"hexa\"``), ``train_rough_len``,
-            ``train_finetune_len``, ``normalization``, ``initialization``, etc.
-        **kwargs
-            Additional MiniSom constructor arguments when ``backend=\"minisom\"``.
-        """
-        self._shape = (int(x), int(y))
-        self._n_features = int(n_features)
+        # ── backend validation ────────────────────────────────────────
         b = backend.strip().lower().replace("-", "_")
         if b not in _SUPPORTED_BACKENDS:
             opts = ", ".join(sorted(_SUPPORTED_BACKENDS))
             raise ValueError(f"unsupported backend {backend!r}; use one of: {opts}")
 
+        self._shape = (int(x), int(y))
+        self._n_features = int(n_features) if n_features is not None else None
         self._backend = b
-        rs = kwargs.pop("random_seed", random_seed)
-        self._random_seed = rs
+        self._random_seed = random_seed
         self._sigma = sigma
         self._learning_rate = learning_rate
 
@@ -112,6 +108,8 @@ class ESOM:
                 )
             self._minisom_extra_kw = {}
 
+    # ── properties ───────────────────────────────────────────────────
+
     @property
     def backend(self) -> str:
         """Active training backend name."""
@@ -119,7 +117,7 @@ class ESOM:
 
     @property
     def weights(self) -> np.ndarray:
-        """Prototype weights ``(x, y, n_features)``."""
+        """Prototype weights as a grid ``(rows, cols, n_features)``."""
         if self._backend == "minisom":
             if self._som is None:
                 raise RuntimeError("call fit() before accessing weights")
@@ -142,32 +140,42 @@ class ESOM:
             return intrasom_backend.weights_grid(self._intrasom)
         raise RuntimeError(f"unhandled backend {self._backend!r}")
 
+    @property
+    def node_weights(self) -> np.ndarray:
+        """Prototype weights as a flat codebook ``(n_nodes, n_features)``.
+
+        This is the TopoSwarm-facing view of the same weights returned by
+        :attr:`weights`.  Row ``k`` is the prototype for grid cell
+        ``(k // cols, k % cols)``.
+        """
+        W = self.weights
+        return W.reshape(-1, W.shape[-1])
+
+    # ── training ─────────────────────────────────────────────────────
+
     def fit(
         self,
         data: np.ndarray,
         iterations: int | None = None,
         epochs: int | None = None,
     ) -> ESOM:
-        """Train on ``data`` (``n_samples``, ``n_features``).
+        """Train on ``data`` (``n_samples × n_features``).
 
         Each backend uses its own natural training-duration unit:
 
-        * **minisom** — uses ``iterations`` (individual sample presentations).
-          Default: ``max(10_000, 50 × n_samples)``.  ``epochs`` is ignored.
-        * **torchsom** — uses ``epochs`` (full passes through the dataset).
-          Default: ``torchsom_kwargs["epochs"]`` if set, otherwise ``10``.
-          ``iterations`` is ignored.
-        * **sompy** — manages its own epoch budget based on the grid/data ratio
-          (``train_len_factor=1.0``).  Both ``iterations`` and ``epochs`` are
-          ignored; adjust training length via ``sompy_kwargs["train_len_factor"]``.
-        * **intrasom** — uses ``epochs`` split evenly between rough and fine-tuning
-          phases (default ``10``).  Override via ``intrasom_kwargs["train_rough_len"]``
-          and ``intrasom_kwargs["train_finetune_len"]``.  ``iterations`` is ignored.
+        * **minisom** — ``iterations`` (individual sample presentations).
+          Default: ``max(10_000, 50 × n_samples)``.
+        * **torchsom** — ``epochs`` (full dataset passes). Default: 10.
+        * **sompy** — manages its own budget; both args are ignored.
+        * **intrasom** — ``epochs`` split evenly between rough and fine-tuning.
+          Default: 10.  Override via ``intrasom_kwargs["train_rough_len"]`` etc.
         """
         data = np.asarray(data, dtype=np.float64)
-        if data.ndim != 2 or data.shape[1] != self._n_features:
+        if data.ndim != 2:
+            raise ValueError(f"data must be 2-D, got shape {data.shape}")
+        if self._n_features is not None and data.shape[1] != self._n_features:
             raise ValueError(
-                f"data must have shape (n_samples, {self._n_features}), got {data.shape}"
+                f"data has {data.shape[1]} features, expected {self._n_features}"
             )
 
         if self._backend == "minisom":
@@ -183,9 +191,8 @@ class ESOM:
                 random_seed=self._random_seed,
                 kwargs=self._minisom_extra_kw,
             )
-            return self
 
-        if self._backend == "sompy":
+        elif self._backend == "sompy":
             from pyesom.projection import sompy_backend
             self._sompy = sompy_backend.train_sompy(
                 data,
@@ -193,9 +200,8 @@ class ESOM:
                 random_seed=self._random_seed,
                 factory_kw=self._sompy_factory_kw,
             )
-            return self
 
-        if self._backend == "torchsom":
+        elif self._backend == "torchsom":
             kw = dict(self._torchsom_factory_kw)
             _epochs = epochs if epochs is not None else int(kw.pop("epochs", 10))
             sigma = self._sigma if self._sigma is not None else 1.0
@@ -210,9 +216,8 @@ class ESOM:
                 random_seed=seed,
                 factory_kw=kw,
             )
-            return self
 
-        if self._backend == "intrasom":
+        elif self._backend == "intrasom":
             kw = dict(self._intrasom_factory_kw)
             _epochs = epochs if epochs is not None else int(kw.pop("epochs", 10))
             from pyesom.projection import intrasom_backend
@@ -223,24 +228,26 @@ class ESOM:
                 random_seed=self._random_seed,
                 factory_kw=kw,
             )
-            # IntraSOM may adjust the grid (e.g. odd→even rows for hexa lattice);
-            # sync _shape from the actual trained weights so all derived methods agree.
             actual = intrasom_backend.weights_grid(self._intrasom)
             self._shape = (actual.shape[0], actual.shape[1])
-            return self
 
-        raise RuntimeError(f"unhandled backend {self._backend!r}")
+        else:
+            raise RuntimeError(f"unhandled backend {self._backend!r}")
+
+        return self
+
+    # ── analysis ─────────────────────────────────────────────────────
 
     def u_matrix(self) -> np.ndarray:
-        """Distance-based U-matrix ``(x, y)``, MiniSom-compatible normalization."""
+        """Distance-based U-matrix ``(rows, cols)``."""
         return compute_umatrix(self.weights, scaling="sum")
 
     def hit_map(self, data: np.ndarray) -> np.ndarray:
-        """Hit counts per neuron."""
+        """Hit counts per neuron ``(rows, cols)``."""
         data = np.asarray(data, dtype=np.float64)
         bm = bmus_from_weights(self.weights, data)
-        gx, gy = self._shape
-        hits = np.zeros((gx, gy), dtype=np.int64)
+        rows, cols = self._shape
+        hits = np.zeros((rows, cols), dtype=np.int64)
         np.add.at(hits, (bm[:, 0], bm[:, 1]), 1)
         return hits
 
@@ -249,18 +256,91 @@ class ESOM:
         data = np.asarray(data, dtype=np.float64)
         return bmus_from_weights(self.weights, data)
 
+    def quantization_error(self, data: np.ndarray) -> float:
+        """Mean distance from each sample to its BMU prototype vector.
+
+        Lower is better — use this to choose ``n_nodes``: plot QE vs n_nodes
+        and pick the elbow where additional nodes stop reducing the error.
+        A value below 5 % of the mean pairwise distance in the raw data is
+        generally sufficient for TopoSwarm.
+        """
+        data = np.asarray(data, dtype=np.float64)
+        W = self.weights
+        bm = bmus_from_weights(W, data)
+        bmu_w = W[bm[:, 0], bm[:, 1]]
+        return float(np.mean(np.linalg.norm(data - bmu_w, axis=1)))
+
     def component_plane(self, data: np.ndarray, feature_idx: int) -> np.ndarray:
         """Mean value of ``feature_idx`` over samples mapped to each neuron."""
         data = np.asarray(data, dtype=np.float64)
-        x, y = self._shape
-        bm = self.bmu_indices(data)
-        acc = np.zeros((x, y), dtype=np.float64)
-        cnt = np.zeros((x, y), dtype=np.float64)
+        rows, cols = self._shape
+        bm = bmus_from_weights(self.weights, data)
+        acc = np.zeros((rows, cols), dtype=np.float64)
+        cnt = np.zeros((rows, cols), dtype=np.float64)
         fi = int(feature_idx)
-        for k in range(len(data)):
-            r, c = int(bm[k, 0]), int(bm[k, 1])
-            acc[r, c] += data[k, fi]
-            cnt[r, c] += 1.0
+        np.add.at(acc, (bm[:, 0], bm[:, 1]), data[:, fi])
+        np.add.at(cnt, (bm[:, 0], bm[:, 1]), 1.0)
         with np.errstate(divide="ignore", invalid="ignore"):
-            plane = np.where(cnt > 0, acc / cnt, np.nan)
-        return plane
+            return np.where(cnt > 0, acc / cnt, np.nan)
+
+    # ── TopoSwarm bridge ──────────────────────────────────────────────
+
+    def export_npz(
+        self,
+        path: str | Path,
+        data: np.ndarray,
+        labels: np.ndarray | None = None,
+    ) -> Path:
+        """Save the arrays the TopoSwarm Julia pipeline needs.
+
+        Writes a single ``.npz`` file containing:
+
+        * ``node_weights`` — ``(n_nodes, n_features)`` prototype vectors
+        * ``hit_map``      — ``(n_nodes,)`` population per node (float64)
+        * ``bmu_indices``  — ``(n_samples,)`` flat node index per raw sample
+        * ``labels``       — ``(n_samples,)`` int class labels (optional, used by
+          ``show_grid`` for visualisation in Julia)
+
+        Parameters
+        ----------
+        path
+            Output path.  ``.npz`` is appended by NumPy if not present.
+        data
+            The raw training data used to compute BMUs and hit counts.
+        labels
+            Optional integer class labels per sample.  When provided, Julia's
+            ``show_grid`` uses them to label bot positions on the grid.
+
+        Returns
+        -------
+        Path
+            Resolved path of the written file (with ``.npz`` suffix).
+
+        Examples
+        --------
+        >>> esom = ESOM(n_nodes=1000, backend="intrasom").fit(X)
+        >>> esom.export_npz("bridge.npz", X, labels=y)
+        """
+        data = np.asarray(data, dtype=np.float64)
+        _, cols = self._shape
+        W = self.node_weights                               # (n_nodes, d)
+        hm = self.hit_map(data).ravel().astype(np.float64) # (n_nodes,)
+        bm2d = bmus_from_weights(self.weights, data)        # (n_samples, 2)
+        bm_flat = (bm2d[:, 0] * cols + bm2d[:, 1]).astype(np.int64)
+
+        out = Path(path)
+        arrays: dict = dict(node_weights=W, hit_map=hm, bmu_indices=bm_flat)
+        if labels is not None:
+            # aggregate per-sample labels to per-node majority class
+            lbl = np.asarray(labels, dtype=np.int64)
+            n_nodes = W.shape[0]
+            node_labels = np.full(n_nodes, -1, dtype=np.int64)
+            for k in range(n_nodes):
+                mask = bm_flat == k
+                if mask.any():
+                    vals, counts = np.unique(lbl[mask], return_counts=True)
+                    node_labels[k] = vals[counts.argmax()]
+            arrays["labels"] = node_labels
+        np.savez(out, **arrays)
+        resolved = out if out.suffix == ".npz" else out.with_suffix(out.suffix + ".npz")
+        return resolved
