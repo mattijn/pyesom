@@ -33,6 +33,14 @@ with a final stress of 0.014.
 
 ---
 
+Here is what it looks like live: the swarm projecting 212 points from the FCPS hepta benchmark in real time:
+
+<img src="../toposwarm.gif" style="max-width:500px;width:100%" alt="TopoSwarm live, hepta, 7 clusters, no k"/>
+
+[Watch on asciinema](https://asciinema.org/a/1007636)
+
+---
+
 ## Why not just use a SOM?
 
 A SOM gives you a map quickly. The catch is that the neighbourhood function couples
@@ -93,7 +101,7 @@ With $n \ll N$ prototypes the swarm stage stays fast regardless of dataset size.
 ::: {#fig-som-compression}
 ```{=html}
 <div class="ts-card">
-  <div class="ts-label">Stage 1 — Quantization</div>
+  <div class="ts-label">Stage 1: Quantization</div>
   <h3>SOM Compression</h3>
     <svg viewBox="0 0 340 260" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -150,7 +158,7 @@ A SOM compresses $N$ raw samples into $n \ll N$ prototype weight vectors. Only t
 ::: {#fig-polar-jump}
 ```{=html}
 <div class="ts-card">
-  <div class="ts-label">Stage 2 — Jump Candidates</div>
+  <div class="ts-label">Stage 2: Jump Candidates</div>
   <h3>Polar Jump Positions</h3>
     <svg viewBox="0 0 340 260" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -209,7 +217,7 @@ Grid positions encoded as `Complex(row,col)`. $R_\text{min}$ from grid density, 
 ::: {#fig-torus}
 ```{=html}
 <div class="ts-card">
-  <div class="ts-label">Stage 2 — Grid Space</div>
+  <div class="ts-label">Stage 2: Grid Space</div>
   <h3>Pac-Man Torus</h3>
     <svg viewBox="0 0 320 270" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -258,7 +266,7 @@ All four edges wrap. A bot at column 1 and one at column $N$ are neighbours. Rem
 ::: {#fig-annealing}
 ```{=html}
 <div class="ts-card">
-  <div class="ts-label">Stage 2 — Annealing</div>
+  <div class="ts-label">Stage 2: Annealing</div>
   <h3>Radius Annealing</h3>
     <svg viewBox="0 0 340 260" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -330,7 +338,7 @@ Large $R$: ~50% of bots explore widely. Small $R$: ~5% make fine-grained adjustm
 ::: {#fig-convergence}
 ```{=html}
 <div class="ts-card">
-  <div class="ts-label">Stage 2 — Convergence</div>
+  <div class="ts-label">Stage 2: Convergence</div>
   <h3>Stress Over Iterations</h3>
     <svg viewBox="0 0 340 260" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -384,7 +392,7 @@ Stress drops steeply at large $R$ (exploration), then plateaus. Each coloured ba
 ::: {#fig-ustar}
 ```{=html}
 <div class="ts-card">
-  <div class="ts-label">Stage 3 — Clustering</div>
+  <div class="ts-label">Stage 3: Clustering</div>
   <h3>U-matrix &amp; U*F</h3>
     <svg viewBox="0 0 340 260" xmlns="http://www.w3.org/2000/svg">
       <!-- 6×5 U-matrix grid, cells 44×34, origin (22,25) -->

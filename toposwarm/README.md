@@ -1,8 +1,13 @@
 # TopoSwarm
 
 Julia implementation of the swarm-projection step in the **TopoSwarm** pipeline.
+Here is what it looks like live: the swarm projecting 212 points from the FCPS hepta benchmark in real time:
 
-Given a pairwise distance matrix over SOM prototype nodes, TopoSwarm places each node as a *bot* on a toroidal grid and iteratively minimises a sum-of-squared-distance-residuals stress — producing a topology-preserving 2-D layout at O(n²) cost in the number of nodes (not raw samples).
+<img src="toposwarm.gif" width="50%" alt="TopoSwarm live, hepta, 7 clusters, no k" />
+
+[Watch on asciinema](https://asciinema.org/a/1007636)
+
+Given a pairwise distance matrix over SOM prototype nodes, TopoSwarm places each node as a *bot* on a toroidal grid and iteratively minimises a sum-of-squared-distance-residuals stress, producing a topology-preserving 2-D layout at O(n²) cost in the number of nodes (not raw samples).
 
 ## How it fits in the pipeline
 
@@ -71,13 +76,35 @@ U = umatrix(result)                         # sparse U-matrix
 
 | function | description |
 |---|---|
-| `pswarm!(D)` | main driver — returns `PswarmResult` |
+| `pswarm!(D)` | main driver, returns `PswarmResult` |
+| `pswarm_live!(D)` | same as `pswarm!` but redraws the grid after every epoch so you can watch the bots settle in real time |
 | `pairwise_euclidean(X)` | build distance matrix from weight matrix |
 | `stress_weighted(D_data, D_grid, pop_weights)` | population-weighted stress (used as the objective) |
 | `umatrix(result)` | compute U-matrix over the swarm grid |
 | `assign_raw_samples(result, bmu_indices)` | map raw samples to grid positions |
 | `show_grid(result)` | ASCII visualisation of the grid |
 | `show_stress(history)` | ASCII convergence plot |
+
+### Live demo
+
+Watch the swarm self-organise in real time. Works in both a terminal and a Jupyter notebook.
+
+**Terminal:**
+
+```bash
+# toy example (9 points, 3 clusters)
+julia --project=toposwarm toposwarm/scripts/run_pswarm_live.jl
+
+# FCPS benchmark dataset
+julia --project=toposwarm toposwarm/scripts/run_pswarm_live.jl hepta
+# available: toy | atom | chainlink | hepta | twodiamonds | wingnut | lsun
+```
+
+**Jupyter notebook** (see `notebooks/06_showcasting_agent_swarm.ipynb`):
+
+```julia
+pswarm_live!(D; labels=labels, seed=42)
+```
 
 ## Paper
 

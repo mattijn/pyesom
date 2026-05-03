@@ -7,14 +7,24 @@
 ## Install
 
 ```bash
-pip install -e ".[dev]"
+pip install -e "."          # core (minisom backend included)
+pip install -e ".[dev]"     # + pytest, ruff, jupyter
 ```
 
 Optional extras:
 
-- **`[bench]`** — extended benchmark scripts using scikit-learn metrics (`pip install -e ".[bench]"`).
-- **`[sompy]`** — [SomPy](https://github.com/sevamoo/SOMPY) batch trainer as an ESOM backend (`pip install -e ".[sompy]"`). Pulls SomPy from GitHub (PyPI `sompy` is often broken).
-- **`[torchsom]`** — [torchsom](https://pypi.org/project/torchsom/) (PyTorch, GPU-capable batch trainer). Same interpreter/kernel as your notebook: `pip install -e ".[torchsom]"`.
+| extra | installs | when you need it |
+|---|---|---|
+| `[intrasom]` | [IntraSOM](https://github.com/alankbi/intrasom) | toroidal + hexagonal lattice; recommended for TopoSwarm |
+| `[bench]` | scikit-learn | ARI / NMI benchmark metrics |
+| `[sompy]` | SomPy (from GitHub) | SomPy batch trainer backend |
+| `[torchsom]` | torchsom + PyTorch | GPU-capable batch trainer backend |
+
+```bash
+pip install -e ".[intrasom]"           # TopoSwarm recommended
+pip install -e ".[dev,bench]"          # development + benchmarks
+pip install -e ".[dev,bench,intrasom]" # everything useful
+```
 
 ## ESOM backends
 
