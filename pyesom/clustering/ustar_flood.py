@@ -10,44 +10,59 @@ from pyesom.topology.ustar import compute_ustar
 
 
 def _normalize_unit_interval(values: np.ndarray) -> np.ndarray:
-    lo = float(values.min())
-    hi = float(values.max())
+    lo = float(np.nanmin(values))
+    hi = float(np.nanmax(values))
     if hi <= lo:
         return np.zeros_like(values, dtype=np.float64)
     return (values - lo) / (hi - lo)
 
 
-def _flood_region_size(norm: np.ndarray, threshold: float) -> int:
+def _neighbours(i: int, j: int, h: int, w: int, toroidal: bool):
+    if toroidal:
+        yield (i + 1) % h, j
+        yield (i - 1) % h, j
+        yield i, (j + 1) % w
+        yield i, (j - 1) % w
+    else:
+        if i + 1 < h: yield i + 1, j
+        if i - 1 >= 0: yield i - 1, j
+        if j + 1 < w: yield i, j + 1
+        if j - 1 >= 0: yield i, j - 1
+
+
+def _flood_region_size(norm: np.ndarray, threshold: float, toroidal: bool = False) -> int:
     """Region grown from global minimum with 4-connectivity and ``value < threshold``."""
     h, w = norm.shape
-    gy, gx = divmod(int(np.argmin(norm)), w)
+    gy, gx = divmod(int(np.nanargmin(norm)), w)
     stack = deque([(gy, gx)])
     visited = np.zeros((h, w), dtype=bool)
     count = 0
     thr = float(threshold)
     while stack:
         i, j = stack.popleft()
-        if i < 0 or i >= h or j < 0 or j >= w:
-            continue
         if visited[i, j]:
+            continue
+        if np.isnan(norm[i, j]):
             continue
         if norm[i, j] >= thr:
             continue
         visited[i, j] = True
         count += 1
-        stack.extend([(i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)])
+        stack.extend(_neighbours(i, j, h, w, toroidal))
     return count
 
 
-def _local_minima_mask(norm: np.ndarray) -> np.ndarray:
+def _local_minima_mask(norm: np.ndarray, toroidal: bool = False) -> np.ndarray:
     h, w = norm.shape
     m = np.ones((h, w), dtype=bool)
     for i in range(h):
         for j in range(w):
             v = norm[i, j]
-            for di, dj in ((0, 1), (0, -1), (1, 0), (-1, 0)):
-                ni, nj = i + di, j + dj
-                if 0 <= ni < h and 0 <= nj < w and norm[ni, nj] < v:
+            if np.isnan(v):
+                m[i, j] = False
+                continue
+            for ni, nj in _neighbours(i, j, h, w, toroidal):
+                if norm[ni, nj] < v:
                     m[i, j] = False
                     break
     return m
@@ -75,6 +90,7 @@ class UStarFloodClustering:
         scalemax: float = 3.0,
         p_median_size: int = 3,
         threshold_anchor: str = "lower",
+        toroidal: bool = False,
     ) -> None:
         self.min_cluster_size = int(min_cluster_size)
         self.min_samples = int(min_samples)
@@ -86,6 +102,7 @@ class UStarFloodClustering:
         if ta not in ("upper", "lower"):
             raise ValueError('threshold_anchor must be "upper" or "lower"')
         self.threshold_anchor = ta
+        self.toroidal = bool(toroidal)
 
         self.labels_: np.ndarray | None = None
         self.n_clusters_: int = 0
@@ -123,7 +140,7 @@ class UStarFloodClustering:
                 raise ValueError("threshold must be between 0 and 1 (normalized U*)")
         else:
             thresholds = np.linspace(0.0, 1.0, self.n_threshold_steps)
-            sizes = [_flood_region_size(unorm, float(t)) for t in thresholds]
+            sizes = [_flood_region_size(unorm, float(t), self.toroidal) for t in thresholds]
             grad = np.diff(np.asarray(sizes, dtype=np.float64))
             if grad.size == 0 or np.nanmax(grad) <= 0:
                 t_star = 0.5
@@ -148,7 +165,7 @@ class UStarFloodClustering:
     ) -> tuple[np.ndarray, int]:
         h, w = unorm.shape
         label_grid = np.full((h, w), -1, dtype=np.int32)
-        min_mask = _local_minima_mask(unorm)
+        min_mask = _local_minima_mask(unorm, self.toroidal)
         thr = float(threshold)
 
         candidates = [(unorm[i, j], i, j) for i, j in zip(*np.where(min_mask))]
@@ -158,7 +175,7 @@ class UStarFloodClustering:
         for _v, i, j in candidates:
             if label_grid[i, j] >= 0:
                 continue
-            _flood_fill_assign(unorm, thr, i, j, label_grid, cluster_id)
+            _flood_fill_assign(unorm, thr, i, j, label_grid, cluster_id, self.toroidal)
             cluster_id += 1
 
         # remove small parties
@@ -213,6 +230,7 @@ def _flood_fill_assign(
     start_j: int,
     label_grid: np.ndarray,
     cluster_id: int,
+    toroidal: bool = False,
 ) -> None:
     h, w = norm.shape
     dq = deque([(start_i, start_j)])
@@ -220,14 +238,14 @@ def _flood_fill_assign(
     thr = float(threshold)
     while dq:
         i, j = dq.popleft()
-        if i < 0 or i >= h or j < 0 or j >= w:
-            continue
         if visited[i, j]:
             continue
         visited[i, j] = True
         if label_grid[i, j] >= 0:
             continue
+        if np.isnan(norm[i, j]):
+            continue
         if norm[i, j] >= thr:
             continue
         label_grid[i, j] = cluster_id
-        dq.extend([(i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)])
+        dq.extend(_neighbours(i, j, h, w, toroidal))

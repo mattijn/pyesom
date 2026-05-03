@@ -238,9 +238,16 @@ class ESOM:
 
     # ── analysis ─────────────────────────────────────────────────────
 
+    @property
+    def toroidal(self) -> bool:
+        """True if the SOM was trained on a toroidal grid."""
+        if self._backend == "intrasom":
+            return self._intrasom_factory_kw.get("mapshape", "").lower() == "toroid"
+        return False
+
     def u_matrix(self) -> np.ndarray:
         """Distance-based U-matrix ``(rows, cols)``."""
-        return compute_umatrix(self.weights, scaling="sum")
+        return compute_umatrix(self.weights, scaling="sum", toroidal=self.toroidal)
 
     def hit_map(self, data: np.ndarray) -> np.ndarray:
         """Hit counts per neuron ``(rows, cols)``."""

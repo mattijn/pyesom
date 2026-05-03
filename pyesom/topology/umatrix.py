@@ -9,7 +9,11 @@ def _fast_norm(v: np.ndarray) -> np.floating:
     return np.sqrt(np.dot(v, v))
 
 
-def compute_umatrix(weights: np.ndarray, scaling: str = "sum") -> np.ndarray:
+def compute_umatrix(
+    weights: np.ndarray,
+    scaling: str = "sum",
+    toroidal: bool = False,
+) -> np.ndarray:
     """
     Compute the U-matrix for a rectangular 2-D SOM grid.
 
@@ -20,6 +24,10 @@ def compute_umatrix(weights: np.ndarray, scaling: str = "sum") -> np.ndarray:
     scaling
         ``'sum'`` (default): each cell is the normalized sum of distances to
         neighbours (MiniSom default). ``'mean'``: average neighbour distance.
+    toroidal
+        When ``True``, edges wrap Pac-Man style so every neuron has the same
+        number of neighbours. Set this when the SOM was trained on a toroidal
+        grid (e.g. intrasom with ``mapshape="toroid"``).
 
     Returns
     -------
@@ -42,7 +50,11 @@ def compute_umatrix(weights: np.ndarray, scaling: str = "sum") -> np.ndarray:
             e = yj % 2 == 0
             for k, (di, dj) in enumerate(zip(ii[e], jj[e])):
                 ni, nj = xi + di, yj + dj
-                if 0 <= ni < x and 0 <= nj < y:
+                if toroidal:
+                    ni, nj = ni % x, nj % y
+                    w_1 = weights[ni, nj]
+                    um[xi, yj, k] = _fast_norm(w_2 - w_1)
+                elif 0 <= ni < x and 0 <= nj < y:
                     w_1 = weights[ni, nj]
                     um[xi, yj, k] = _fast_norm(w_2 - w_1)
 

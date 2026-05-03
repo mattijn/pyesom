@@ -616,11 +616,8 @@ for k, (nr, nc) in enumerate(zip(node_rows, node_cols)):
 
 from pyesom.clustering.ustar_flood import UStarFloodClustering
 
-# NaN cells (unoccupied) become the max U-height so they act as ridges/barriers
-U_filled = np.where(np.isnan(U), float(np.nanmax(U)), U)
-
-clf = UStarFloodClustering(min_cluster_size=2, threshold_anchor="upper")
-clf.fit(U_filled, P)
+clf = UStarFloodClustering(min_cluster_size=2, threshold_anchor="upper", toroidal=True)
+clf.fit(U, P)
 
 # predict needs 0-based (row, col); Julia exports 1-based
 bmu_2d         = np.column_stack([sample_rows - 1, sample_cols - 1])
